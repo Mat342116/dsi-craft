@@ -269,7 +269,7 @@ static void renderWorld3D(void) {
     gluLookAt(20.0f,19.0f,23.0f, 0.0f,2.0f,0.0f, 0.0f,1.0f,0.0f);
     glClearColor(12,20,31,31);
     glClearDepth(GL_MAX_DEPTH);
-    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    /* DS 3D clears and submits the display list on glFlush(). */
     glPolyFmt(POLY_ALPHA(31)|POLY_CULL_NONE);
     for (int y=0;y<WORLD_HEIGHT;y++) {
         for (int z=0;z<WORLD_SIZE;z++) {
@@ -279,23 +279,13 @@ static void renderWorld3D(void) {
             }
         }
     }
-    /* A bright wireframe cube marks the selected build position. */
+    /* Bright yellow top marker for the selected build cell. */
     float x=(float)cursorX-7.5f, y=(float)cursorY+0.02f, z=(float)cursorZ-7.5f;
     glColor(RGB15(31,31,0));
-    glBegin(GL_LINES);
-    glVertex3f(x,y,z); glVertex3f(x+1,y,z);
-    glVertex3f(x+1,y,z); glVertex3f(x+1,y,z+1);
-    glVertex3f(x+1,y,z+1); glVertex3f(x,y,z+1);
-    glVertex3f(x,y,z+1); glVertex3f(x,y,z);
-    glVertex3f(x,y+1,z); glVertex3f(x+1,y+1,z);
-    glVertex3f(x+1,y+1,z); glVertex3f(x+1,y+1,z+1);
-    glVertex3f(x+1,y+1,z+1); glVertex3f(x,y+1,z+1);
-    glVertex3f(x,y+1,z+1); glVertex3f(x,y+1,z);
-    glVertex3f(x,y,z); glVertex3f(x,y+1,z);
-    glVertex3f(x+1,y,z); glVertex3f(x+1,y+1,z);
-    glVertex3f(x+1,y,z+1); glVertex3f(x+1,y+1,z+1);
-    glVertex3f(x,y,z+1); glVertex3f(x,y+1,z+1);
-    glEnd();
+    drawQuad(x,y,z, x+1,y,z, x+1,y,z+0.08f, x,y,z+0.08f,RGB15(31,31,0));
+    drawQuad(x,y,z+0.92f, x+1,y,z+0.92f, x+1,y,z+1, x,y,z+1,RGB15(31,31,0));
+    drawQuad(x,y,z+0.08f, x+0.08f,y,z+0.08f, x+0.08f,y,z+0.92f, x,y,z+0.92f,RGB15(31,31,0));
+    drawQuad(x+0.92f,y,z+0.08f, x+1,y,z+0.08f, x+1,y,z+0.92f, x+0.92f,y,z+0.92f,RGB15(31,31,0));
     glFlush(0);
 }
 
@@ -315,11 +305,20 @@ static void showWorld(void) {
     iprintf("Schermo superiore: mondo 3D\n");
 }
 int main(void) {
-    videoSetMode(MODE_0_2D);
+    videoSetMode(MODE_0_3D);
     videoSetModeSub(MODE_0_2D);
-    vramSetBankA(VRAM_A_MAIN_BG);
+    lcdMainOnTop();
+    vramSetBankA(VRAM_A_TEXTURE);
+    vramSetBankB(VRAM_B_TEXTURE);
     vramSetBankC(VRAM_C_SUB_BG);
-    consoleDemoInit();
+    consoleInit(NULL,0,BgType_Text4bpp,BgSize_T_256x256,31,0,false,true);
+    glInit();
+    glEnable(GL_ANTIALIAS);
+    glEnable(GL_BLEND);
+    glClearColor(12,20,31,31);
+    glClearPolyID(63);
+    glClearDepth(GL_MAX_DEPTH);
+    glViewport(0,0,255,191);
 
     sdAvailable = fatInitDefault();
     if (sdAvailable) {
@@ -413,6 +412,7 @@ int main(void) {
             }
         }
 
+        if (activeWorld >= 0) renderWorld3D();
         swiWaitForVBlank();
     }
 
