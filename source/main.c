@@ -555,6 +555,7 @@ int main(void) {
     while (1) {
         scanKeys();
         int keys = keysDown();
+        int held = keysHeld();
         bool changed = false;
 
         if (activeWorld < 0) {
@@ -569,7 +570,7 @@ int main(void) {
             if ((keys & KEY_A) && worlds[selectedWorld].used) {
                 activeWorld = selectedWorld;
                 playerX = 8.5f; playerY = 4.0f; playerZ = 8.5f;
-                viewYaw = 0.0f; viewPitch = 0.0f;
+                viewYaw = 0.0f; viewPitch = -0.28f;
                 enterWorldPalette();
             }
             if (keys & KEY_X) {
@@ -608,10 +609,14 @@ int main(void) {
             } else {
                 /* D-pad controls movement and turning, like a handheld FPS. */
                 float forward = 0.0f;
-                if (keys & KEY_UP) forward += 0.16f;
-                if (keys & KEY_DOWN) forward -= 0.16f;
-                if (keys & KEY_LEFT) viewYaw -= 0.09f;
-                if (keys & KEY_RIGHT) viewYaw += 0.09f;
+                if (held & KEY_UP) forward += 0.075f;
+                if (held & KEY_DOWN) forward -= 0.075f;
+                if (held & KEY_LEFT) viewYaw -= 0.045f;
+                if (held & KEY_RIGHT) viewYaw += 0.045f;
+                if (keys & KEY_X) viewPitch += 0.06f;
+                if (keys & KEY_Y) viewPitch -= 0.06f;
+                if (viewPitch > 1.15f) viewPitch = 1.15f;
+                if (viewPitch < -1.15f) viewPitch = -1.15f;
                 if (forward != 0.0f) {
                     playerX += sinf(viewYaw) * forward;
                     playerZ -= cosf(viewYaw) * forward;
