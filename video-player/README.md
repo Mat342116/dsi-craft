@@ -1,34 +1,31 @@
 # DSi Video Player
 
-Standalone Nintendo DS/DSi homebrew subproject. It is separate from the DSi Craft game.
+A standalone DSi video-player project inside dsi-craft.
 
-## Intended design
+## Playback engine
 
-- Video image on the **upper** screen.
-- Touch controls and file selection on the **lower** screen.
-- START returns to/rescans the video library.
-- PLAY, PAUSE, STOP and RESCAN touch targets.
-- Files are read from `sd:/videos`.
+The ROM build currently packages **Rocket Video Player** as the real playback engine. This is a deliberate step beyond the original mock UI: it produces an actual player rather than pretending the placeholder buttons decode video. The upstream engine is pinned in the workflow to commit `50803b9027ca43ab278c1486442fcfc70c90b309` and retains its original MIT license and credits.
 
-## Current status
+- Supported video container: `.rvid` (not MP4 and not FastVideoDS `.fv`).
+- Video playback supports audio and touch controls.
+- The upstream player provides its own file browser and playback interface.
+- The custom interface in `source/main.c` (upper-screen output, lower touchscreen library, PLAY/PAUSE/STOP and START-to-list) is still a separate prototype and is **not yet wired to the decoder**.
 
-This first commit is a **buildable interface and SD file-browser prototype**, not yet a functioning video player. The playback decoder is deliberately not represented as working: an actual FastVideoDS decoder/output backend still needs to be integrated and tested on hardware.
+## Convert videos
 
-The DSi does not decode arbitrary MP4 files natively. The intended pipeline is MP4 on iPhone/another device -> compatible FastVideoDS stream -> DSi player. Renaming an MP4 to `.fv` will not convert it.
+MP4 files must be converted to Rocket Video `.rvid` format with [Vid2RVID](https://github.com/RocketRobz/Vid2RVID/releases). Simply renaming an MP4 file does not convert it. The converter is a desktop tool; an iPhone-only conversion workflow has not yet been implemented.
 
-The prototype currently lists `.fv` files only. It does not play MP4 or FV video yet.
+Put converted `.rvid` files in the `/videos` folder on the SD card. Launch the ROM from TWiLight Menu++.
+
+## Controls in the current playback-engine build
+
+- A / touch Play-Pause: play or pause.
+- L / touch stop area: stop.
+- B / touch Return: exit the video and return to the file browser.
+- The file browser lets you choose the next video.
+
+The requested custom behavior (START returning to the file list, dedicated lower-screen controls and upper-screen-only video) remains the next integration task.
 
 ## Build
 
-Requires devkitPro/devkitARM, libnds and libfat:
-
-```sh
-cd video-player
-make
-```
-
-Output: `DSiVideoPlayer.nds`
-
-## SD card layout
-
-Create a `videos` directory at the root of the SD card and put compatible `.fv` files there.
+GitHub Actions builds the pinned upstream engine with the BlocksDS SDK Docker image and publishes an artifact named `DSi-Video-Player-ROM`. The ROM filename is `DSiVideoPlayer.nds`.
