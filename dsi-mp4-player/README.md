@@ -2,27 +2,28 @@
 
 Homebrew per Nintendo DSi in C con devkitPro/libnds.
 
-## Interfaccia
+## Interfaccia personalizzata (prototipo)
 - Schermata principale con i comandi touch **PLAY** e **PAUSA**.
 - Il tasto **START** apre/chiude il menu per scegliere un file dalla SD.
-- I video vengono cercati nella cartella `/video`.
+- Il browser cerca attualmente file `.mp4` nella cartella `/video`.
 - Nel menu si tocca il nome del file per selezionarlo; **R** aggiorna l'elenco.
 
-## Stato reale del progetto
-Questa build implementa l'interfaccia touch e la selezione dei file MP4. **Non contiene ancora un decoder né riproduce effettivamente il video**: PLAY/PAUSA aggiornano per ora lo stato mostrato nell'interfaccia. Non considerare quindi questa ROM un lettore video completo.
+**Importante:** questa interfaccia non contiene ancora un decoder video. PLAY/PAUSA aggiornano solo lo stato visualizzato: non avviano o fermano la riproduzione. La ROM del prototipo non è ancora un lettore video completo.
 
-MP4 è un contenitore e può contenere codec diversi. Il DSi ha CPU e RAM limitate: la strada pratica è convertire il video su PC in un flusso a bassa risoluzione e integrare un decoder leggero sulla console.
+## Percorso concreto per riprodurre video su DSi
+Per la riproduzione reale, il progetto usa come riferimento **Rocket Video Player**, un lettore DS/DSi esistente con controlli touch Play/Pause e browser file. Richiede video convertiti nel formato proprietario `.rvid` tramite Vid2RVID; non legge MP4 direttamente.
 
-## Preparazione video di test (PC)
-Lo script `tools/convert_video.py` richiede FFmpeg sul computer e genera un flusso MPEG-1 256x144 a 15 fps con audio MP2 mono:
+- [Rocket Video Player (codice e istruzioni)](https://github.com/RocketRobz/RocketVideoPlayer)
+- [Vid2RVID (convertitore)](https://github.com/RocketRobz/Vid2RVID)
+- [Release Vid2RVID](https://github.com/RocketRobz/Vid2RVID/releases)
+- [Dettagli del backend e procedura](docs/PLAYER_BACKEND.md)
 
-```sh
-python3 tools/convert_video.py filmato.mp4
-```
+La conversione si fa su PC. Copia poi il file `.rvid` sulla SD e aprilo con Rocket Video Player. Il collegamento del motore Rocket Video alla nostra interfaccia START personalizzata è ancora un lavoro da completare.
 
-Il file convertito è soltanto un formato candidato per il futuro decoder: la ROM attuale non lo riproduce ancora. Vedi [docs/VIDEO_PIPELINE.md](docs/VIDEO_PIPELINE.md).
+## Vecchio convertitore MPEG-1
+`tools/convert_video.py` genera un file MPEG-1 di test per esperimenti futuri. Non è il formato del player Rocket Video e il prototipo attuale non riproduce nemmeno quel file.
 
-## Compilazione
+## Compilazione del prototipo UI
 Con devkitPro e il gruppo `nds-dev` installati:
 
 ```sh
@@ -30,13 +31,4 @@ cd dsi-mp4-player
 make
 ```
 
-Output previsto: `dsi-mp4-player.nds`.
-
-## Installazione SD
-Crea la cartella `/video` nella scheda SD e copia lì i file MP4. Avvia la homebrew: START apre il selettore, tocca un nome per tornare al lettore.
-
-## Prossimi passi
-1. Verificare la compilazione e l'interfaccia su DSi reale/emulatore.
-2. Integrare un decoder adatto al DSi.
-3. Collegare PLAY/PAUSA al motore di riproduzione.
-4. Testare audio, sincronizzazione e prestazioni.
+Output previsto: `dsi-mp4-player.nds`. La compilazione e il funzionamento su hardware reale devono ancora essere verificati.
