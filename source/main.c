@@ -95,12 +95,23 @@ static bool saveWorlds(void) {
     }
 
     /* FAT non consente sempre rename() sopra un file esistente.
-       Sposta il vecchio salvataggio in backup e ripristinalo se serve. */
-    remove(SAVE_BACKUP_PATH);
+       Prima recupera un eventuale backup lasciato da un'interruzione. */
     FILE *oldSave = fopen(SAVE_PATH, "rb");
     bool hadOldSave = oldSave != NULL;
     if (oldSave != NULL) fclose(oldSave);
 
+    if (!hadOldSave) {
+        FILE *backup = fopen(SAVE_BACKUP_PATH, "rb");
+        if (backup != NULL) {
+            fclose(backup);
+            if (rename(SAVE_BACKUP_PATH, SAVE_PATH) == 0)
+                hadOldSave = true;
+        }
+    }
+
+    if (hadOldSave) {
+        remove(SAVE_BACKUP_PATH);
+    }
     if (hadOldSave && rename(SAVE_PATH, SAVE_BACKUP_PATH) != 0) {
         remove(SAVE_TEMP_PATH);
         saveOk = false;
@@ -123,6 +134,11 @@ static void loadWorlds(void) {
     if (!sdAvailable) return;
 
     FILE *file = fopen(SAVE_PATH, "rb");
+    if (file == NULL) {
+        /* Recupera il backup se la console si è spenta durante il salvataggio. */
+        if (rename(SAVE_BACKUP_PATH, SAVE_PATH) == 0)
+            file = fopen(SAVE_PATH, "rb");
+    }
     if (file == NULL) {
         saveOk = true; /* Primo avvio: non esiste ancora un file di salvataggio. */
         return;
