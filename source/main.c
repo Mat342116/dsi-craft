@@ -390,7 +390,7 @@ static void drawCenterCrosshair(void) {
     /* Fixed, thin Minecraft-style crosshair at the exact screen center. */
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrthof(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
+    glOrtho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     int white = RGB15(31, 31, 31);
