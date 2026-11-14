@@ -351,16 +351,19 @@ static void drawBlock(int x, int y, int z, unsigned char block) {
 
 static void drawBuildMarker(void) {
     float x = (float)cursorX - 8.0f;
-    float y = (float)cursorY + 0.025f;
+    float y = (float)cursorY + 0.035f;
     float z = (float)cursorZ - 8.0f;
     int marker = RGB15(31,31,0);
 
-    drawQuad(x,y,z, x+1,y,z, x+1,y,z+0.08f, x,y,z+0.08f, marker);
-    drawQuad(x,y,z+0.92f, x+1,y,z+0.92f, x+1,y,z+1, x,y,z+1, marker);
-    drawQuad(x,y,z+0.08f, x+0.08f,y,z+0.08f,
-             x+0.08f,y,z+0.92f, x,y,z+0.92f, marker);
-    drawQuad(x+0.92f,y,z+0.08f, x+1,y,z+0.08f,
-             x+1,y,z+0.92f, x+0.92f,y,z+0.92f, marker);
+    /* Bright X-shaped placement pointer on the selected block. */
+    drawQuad(x+0.04f,y,z+0.12f,
+             x+0.12f,y,z+0.04f,
+             x+0.96f,y,z+0.88f,
+             x+0.88f,y,z+0.96f, marker);
+    drawQuad(x+0.04f,y,z+0.88f,
+             x+0.12f,y,z+0.96f,
+             x+0.96f,y,z+0.12f,
+             x+0.88f,y,z+0.04f, marker);
 }
 
 static void drawBlockInHand(void) {
