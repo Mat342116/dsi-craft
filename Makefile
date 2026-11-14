@@ -18,5 +18,5 @@ CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS := -g $(ARCH)
 LDFLAGS := -specs=ds_arm9.specs -g $(ARCH)
 
-LIBS := -lnds9
+LIBS := -lnds9 -lfat
 LIBDIRS := $(LIBNDS)
