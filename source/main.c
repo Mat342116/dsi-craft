@@ -296,6 +296,7 @@ static void enterWorld(int slot) {
     activeWorld = slot;
     playerX = 8.5f; playerZ = 8.5f; playerY = (float)topHeight(8, 8);
     yaw = 0.0f; pitch = 0.0f;
+    renderWorld();
     showGameHelp();
 }
 
@@ -312,7 +313,20 @@ int main(void) {
     consoleSelect(&bottomConsole);
     sdAvailable = fatInitDefault();
     if (sdAvailable) loadWorlds();
-    showMenu();
+
+    /* Avvio diretto: crea il primo mondo se non ne esiste ancora uno,
+       così la prima schermata mostra subito il gioco 3D. */
+    int firstWorld = -1;
+    for (int i = 0; i < MAX_WORLDS; ++i) {
+        if (worlds[i].used) { firstWorld = i; break; }
+    }
+    if (firstWorld < 0) {
+        firstWorld = 0;
+        generateWorld(&worlds[firstWorld]);
+        saveWorlds();
+    }
+    selectedWorld = firstWorld;
+    enterWorld(firstWorld);
 
     while (1) {
         scanKeys();
