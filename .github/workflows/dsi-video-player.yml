@@ -23,7 +23,7 @@ jobs:
             -v "$GITHUB_WORKSPACE/engine:/work" \
             -w /work/nds \
             skylyrac/blocksds:slim-latest \
-            bash -lc "make"
+            bash -lc "chmod +x ./make_cia && make"
       - name: Package and verify ROM
         run: |
           test -s engine/nds/RocketVideoPlayer.nds
