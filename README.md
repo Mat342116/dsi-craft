@@ -1,51 +1,43 @@
 # DSi Craft
 
-Gioco fan-made creativo per Nintendo DSi, realizzato in C con devkitPro/devkitARM e libnds.
+Gioco creativo a blocchi per Nintendo DSi, scritto in C con devkitPro/devkitARM e libnds.
 
-## Stato attuale
+## Versione 3D
 
-Prima versione giocabile in stile sandbox 2D testuale:
-- mondo a blocchi 16 x 16 con 8 livelli di altezza;
-- fino a 4 mondi selezionabili dal menu;
-- creazione di mondi con terreno iniziale;
-- blocchi: erba, terra, pietra, legno e sabbia;
-- cursore di costruzione, senza personaggio visibile o visuale in terza persona;
-- rottura e piazzamento dei blocchi;
-- selezione del blocco tramite touch screen;
-- ambientazione sempre di giorno: non esiste un ciclo giorno/notte.
+- Schermo superiore: mondo tridimensionale a blocchi, con prospettiva e selettore di costruzione.
+- Schermo inferiore: tavolozza touch con i blocchi disponibili.
+- Toccando un blocco nella tavolozza lo si prende direttamente in mano; il blocco selezionato viene mostrato anche nella visuale di gioco.
+- Blocchi semplici: erba, terra, pietra, legno e sabbia.
+- Porte e bauli: si possono piazzare e aprire/chiudere con A.
+- TNT, botole, fuoco e blocchi troppo complessi non sono inclusi.
+- Modalita' creativa sempre di giorno, senza mob, meteo o sopravvivenza.
 
-## Salvataggi
+## Mondi e salvataggi
 
-I quattro mondi vengono caricati all'avvio e salvati automaticamente sulla scheda SD del Nintendo DSi nel file `fat:/dsi-craft.sav`. Il salvataggio viene aggiornato quando crei un mondo, rompi un blocco o ne piazzi uno.
+Sono disponibili fino a quattro mondi, con terreno iniziale 16 x 16 e otto livelli di altezza. I mondi vengono salvati automaticamente sulla scheda SD del Nintendo DSi nel file fat:/dsi-craft.sav.
 
-La schermata mostra lo stato del salvataggio. Se la scheda SD non è disponibile o la scrittura fallisce, il gioco lo segnala: in quel caso le modifiche restano solo in memoria e non bisogna considerarle salvate. Non rimuovere la scheda SD mentre il gioco sta salvando.
+Il formato di salvataggio nuovo mantiene la compatibilita' con i mondi creati dalla versione precedente: i salvataggi versione 1 con i cinque blocchi base vengono caricati senza cancellare i mondi. Le nuove modifiche vengono salvate nel formato versione 2.
 
-## Modalita' di gioco
-
-DSi Craft e' esclusivamente creativo: sempre giorno, niente ciclo notte, mob, meteo, pioggia o sopravvivenza.
+Se la scheda SD non e' disponibile o la scrittura fallisce, il gioco lo segnala. In quel caso le modifiche restano solo in memoria e non bisogna considerarle salvate. Non rimuovere la scheda SD mentre il gioco sta salvando.
 
 ## Comandi
 
 ### Menu mondi
 - Frecce: seleziona uno dei quattro slot.
-- A: entra nel mondo selezionato, se gia' creato.
-- X: crea un mondo nel primo slot libero (massimo 4).
+- A: entra nel mondo selezionato.
+- X: crea un mondo nel primo slot libero.
 
-### Dentro un mondo
-- Frecce: muovi il cursore sul terreno.
-- X / Y: abbassa / alza il livello di lavoro.
-- L: rompi il blocco nella posizione del cursore.
-- R: piazza il blocco selezionato.
-- Touch: seleziona uno dei cinque blocchi.
-- SELECT: passa al blocco successivo.
+### Nel mondo 3D
+- Schermo inferiore / touch: scegli il blocco da tenere in mano.
+- Frecce: sposta il puntatore sul terreno.
+- X / Y: abbassa o alza il livello di costruzione.
+- L: rompi il blocco puntato.
+- R: posa il blocco che hai in mano.
+- A: apri o chiudi una porta o un baule puntato.
 - B: torna al menu dei mondi.
 
-Il simbolo + sulla mappa indica il cursore di costruzione, non un personaggio.
+Non c'e' hotbar: il blocco si sceglie direttamente dalla tavolozza sullo schermo inferiore.
 
 ## Compilazione
 
-Serve devkitPro con devkitARM, libnds e libfat installati. Eseguire `make` dalla cartella del progetto. La GitHub Action installa nds-dev prima di compilare.
-
-## Prossimi passi
-
-Grafica a blocchi e controlli piu' rifiniti.
+Serve devkitPro con devkitARM, libnds e libfat installati. Eseguire make dalla cartella del progetto. La GitHub Action installa nds-dev prima di compilare.
