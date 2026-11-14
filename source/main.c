@@ -45,6 +45,15 @@ static int cursorY = 3;
 static bool sdAvailable = false;
 static bool saveOk = false;
 
+/* Player position and view direction for the first-person camera. */
+static float playerX = 8.5f;
+static float playerY = 4.0f;
+static float playerZ = 8.5f;
+static float viewYaw = 0.0f;
+static float viewPitch = 0.0f;
+static int paletteBg = -1;
+static u16 *palettePixels = NULL;
+
 static const int paletteBlocks[7] = {
     GRASS, DIRT, STONE, WOOD, SAND, DOOR_CLOSED, CHEST_CLOSED
 };
@@ -208,25 +217,50 @@ static void showWorldMenu(void) {
 }
 
 static void showPalette(void) {
-    consoleClear();
-    iprintf("       DSi CRAFT - BLOCCHI\n");
-    iprintf(" Tocca un blocco per prenderlo\n");
-    iprintf("--------------------------------\n");
-    iprintf("[ERBA]  [TERRA] [PIETRA] [LEGNO]\n");
-    iprintf("   1       2       3       4\n");
-    iprintf("\n[SABBIA] [PORTA]  [BAULE]\n");
-    iprintf("   5       6       7\n");
-    iprintf("--------------------------------\n");
-    iprintf("MANO: %s\n", blockName((unsigned char)selectedBlock));
-    iprintf("Il blocco selezionato e' in mano\n");
-    iprintf("Frecce: muovi il puntatore\n");
-    iprintf("X/Y: cambia altezza\n");
-    iprintf("L: rompi  R: posa blocco\n");
-    iprintf("A: usa porta o baule\n");
-    iprintf("B: torna ai mondi\n");
-    iprintf("Salvataggio SD: %s\n",
-            !sdAvailable ? "non disponibile" :
-            (saveOk ? "OK" : "ERRORE"));
+    /* Gameplay UI is drawn as pixel-art icons on the lower screen. */
+    if (palettePixels == NULL) return;
+    for (int i = 0; i < 256 * 256; i++) palettePixels[i] = RGB15(5, 8, 13);
+    /* subtle panel and icon wells */
+    for (int y = 8; y < 184; y++)
+        for (int x = 6; x < 250; x++)
+            palettePixels[y * 256 + x] = RGB15(8, 12, 18);
+    for (int i = 0; i < 7; i++) {
+        int x = (i < 4) ? 12 + i * 60 : 42 + (i - 4) * 60;
+        int y = (i < 4) ? 24 : 108;
+        int edge = paletteBlocks[i] == selectedBlock ? RGB15(31, 29, 12) : RGB15(15, 18, 23);
+        for (int yy = y - 5; yy < y + 53; yy++)
+            for (int xx = x - 5; xx < x + 53; xx++)
+                if (xx >= 0 && xx < 256 && yy >= 0 && yy < 192)
+                    palettePixels[yy * 256 + xx] = edge;
+        for (int yy = y; yy < y + 43; yy++)
+            for (int xx = x; xx < x + 43; xx++)
+                palettePixels[yy * 256 + xx] = RGB15(3, 5, 8);
+        int col = blockColor((unsigned char)paletteBlocks[i]);
+        if (paletteBlocks[i] == DOOR_CLOSED) {
+            for (int yy = y + 5; yy < y + 39; yy++)
+                for (int xx = x + 13; xx < x + 30; xx++)
+                    palettePixels[yy * 256 + xx] = RGB15(22, 13, 5);
+            for (int yy = y + 5; yy < y + 39; yy++) palettePixels[yy * 256 + x + 14] = RGB15(28, 20, 8);
+        } else if (paletteBlocks[i] == CHEST_CLOSED) {
+            for (int yy = y + 15; yy < y + 36; yy++)
+                for (int xx = x + 6; xx < x + 37; xx++)
+                    palettePixels[yy * 256 + xx] = RGB15(22, 13, 4);
+            for (int xx = x + 6; xx < x + 37; xx++) palettePixels[(y + 15) * 256 + xx] = RGB15(30, 20, 7);
+            for (int yy = y + 23; yy < y + 27; yy++)
+                for (int xx = x + 19; xx < x + 24; xx++) palettePixels[yy * 256 + xx] = RGB15(30, 25, 12);
+        } else {
+            /* Three shaded faces make a small voxel-cube illustration. */
+            for (int yy = y + 8; yy < y + 29; yy++)
+                for (int xx = x + 7; xx < x + 36; xx++) {
+                    int shade = (xx < x + 21 && yy < y + 19) ? 2 : 0;
+                    palettePixels[yy * 256 + xx] = col;
+                    if (shade) palettePixels[yy * 256 + xx] = RGB15(28, 28, 28);
+                }
+            for (int yy = y + 29; yy < y + 37; yy++)
+                for (int xx = x + 7; xx < x + 36; xx++)
+                    palettePixels[yy * 256 + xx] = RGB15(10, 10, 10);
+        }
+    }
 }
 
 static void keepCursorInWorld(void) {
@@ -349,21 +383,18 @@ static void drawBlock(int x, int y, int z, unsigned char block) {
         drawQuad(a,b,Z, a,Y,Z, X,Y,Z, X,b,Z, front);
 }
 
-static void drawBuildMarker(void) {
-    float x = (float)cursorX - 8.0f;
-    float y = (float)cursorY + 0.035f;
-    float z = (float)cursorZ - 8.0f;
-    int marker = RGB15(31,31,0);
-
-    /* Bright X-shaped placement pointer on the selected block. */
-    drawQuad(x+0.04f,y,z+0.12f,
-             x+0.12f,y,z+0.04f,
-             x+0.96f,y,z+0.88f,
-             x+0.88f,y,z+0.96f, marker);
-    drawQuad(x+0.04f,y,z+0.88f,
-             x+0.12f,y,z+0.96f,
-             x+0.96f,y,z+0.12f,
-             x+0.88f,y,z+0.04f, marker);
+static void drawCenterCrosshair(void) {
+    /* Fixed, thin Minecraft-style crosshair at the exact screen center. */
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrthof(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    int white = RGB15(31, 31, 31);
+    drawQuad(-0.010f, -0.075f, -2.0f, 0.010f, -0.075f, -2.0f,
+             0.010f, 0.075f, -2.0f, -0.010f, 0.075f, -2.0f, white);
+    drawQuad(-0.075f, -0.010f, -2.0f, 0.075f, -0.010f, -2.0f,
+             0.075f, 0.010f, -2.0f, -0.075f, 0.010f, -2.0f, white);
 }
 
 static void drawBlockInHand(void) {
@@ -385,14 +416,18 @@ static void drawBlockInHand(void) {
 static void renderWorld3D(void) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(58.0f, 256.0f/192.0f, 0.1f, 80.0f);
+    gluPerspective(68.0f, 256.0f/192.0f, 0.1f, 80.0f);
 
+    float cp = cosf(viewPitch);
+    float dx = sinf(viewYaw) * cp;
+    float dy = sinf(viewPitch);
+    float dz = -cosf(viewYaw) * cp;
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(12.0f, 11.0f, 14.0f,
-              0.0f, 1.5f, 0.0f,
+    gluLookAt(playerX - 8.0f, playerY, playerZ - 8.0f,
+              playerX - 8.0f + dx, playerY + dy,
+              playerZ - 8.0f + dz,
               0.0f, 1.0f, 0.0f);
-
     glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE);
 
     for (int y = 0; y < WORLD_HEIGHT; y++) {
@@ -403,27 +438,91 @@ static void renderWorld3D(void) {
             }
         }
     }
-
-    drawBuildMarker();
     drawBlockInHand();
+    drawCenterCrosshair();
     glFlush(0);
 }
 
 static void selectPaletteBlock(int x, int y) {
     int slot = -1;
-
-    if (y >= 40 && y < 100) {
-        slot = x / 64;
-        if (slot < 0 || slot > 3) return;
-    } else if (y >= 104 && y < 168) {
-        slot = 4 + x / 64;
-        if (slot < 4 || slot > 6) return;
-    } else {
-        return;
+    if (y >= 19 && y < 76) {
+        int col = (x - 7) / 60;
+        if (col >= 0 && col < 4 && x >= 7 + col * 60 && x < 60 + col * 60) slot = col;
+    } else if (y >= 103 && y < 160) {
+        int col = (x - 37) / 60;
+        if (col >= 0 && col < 3 && x >= 37 + col * 60 && x < 90 + col * 60) slot = 4 + col;
     }
-
+    if (slot < 0 || slot > 6) return;
     selectedBlock = paletteBlocks[slot];
     showPalette();
+}
+
+static bool raycastTarget(int *hitX, int *hitY, int *hitZ,
+                          int *placeX, int *placeY, int *placeZ) {
+    float cp = cosf(viewPitch);
+    float dx = sinf(viewYaw) * cp;
+    float dy = sinf(viewPitch);
+    float dz = -cosf(viewYaw) * cp;
+    int lastX = -1, lastY = -1, lastZ = -1;
+    for (float t = 0.15f; t <= 6.0f; t += 0.06f) {
+        int x = (int)floorf(playerX + dx * t);
+        int y = (int)floorf(playerY + dy * t);
+        int z = (int)floorf(playerZ + dz * t);
+        if (x < 0 || x >= WORLD_SIZE || y < 0 || y >= WORLD_HEIGHT || z < 0 || z >= WORLD_SIZE) continue;
+        if (worlds[activeWorld].blocks[x][y][z] != AIR) {
+            *hitX = x; *hitY = y; *hitZ = z;
+            *placeX = lastX; *placeY = lastY; *placeZ = lastZ;
+            return true;
+        }
+        lastX = x; lastY = y; lastZ = z;
+    }
+    return false;
+}
+
+static void breakTargetBlock(void) {
+    int x,y,z,px,py,pz;
+    if (raycastTarget(&x,&y,&z,&px,&py,&pz)) {
+        worlds[activeWorld].blocks[x][y][z] = AIR;
+        saveWorlds();
+    }
+}
+
+static void placeTargetBlock(void) {
+    int x,y,z,px,py,pz;
+    if (raycastTarget(&x,&y,&z,&px,&py,&pz) &&
+        px >= 0 && py >= 0 && pz >= 0 &&
+        worlds[activeWorld].blocks[px][py][pz] == AIR) {
+        worlds[activeWorld].blocks[px][py][pz] = (unsigned char)selectedBlock;
+        saveWorlds();
+    }
+}
+
+static void interactTargetBlock(void) {
+    int x,y,z,px,py,pz;
+    if (raycastTarget(&x,&y,&z,&px,&py,&pz)) {
+        cursorX=x; cursorY=y; cursorZ=z;
+        interactBlock();
+    }
+}
+
+static void initGamePalette(void) {
+    videoSetModeSub(MODE_5_2D);
+    paletteBg = bgInitSub(3, BgType_Bmp16, BgSize_B16_256x256, 0, 0);
+    palettePixels = (u16 *)bgGetGfxPtr(paletteBg);
+    showPalette();
+}
+
+static void enterWorldPalette(void) {
+    initGamePalette();
+}
+
+static void returnToWorldMenu(void) {
+    palettePixels = NULL;
+    videoSetModeSub(MODE_0_2D);
+    consoleInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x256,
+                31, 0, false, true);
+    activeWorld = -1;
+    showWorldMenu();
 }
 
 int main(void) {
@@ -466,10 +565,9 @@ int main(void) {
             }
             if ((keys & KEY_A) && worlds[selectedWorld].used) {
                 activeWorld = selectedWorld;
-                cursorX = 8;
-                cursorZ = 8;
-                cursorY = 3;
-                showPalette();
+                playerX = 8.5f; playerY = 4.0f; playerZ = 8.5f;
+                viewYaw = 0.0f; viewPitch = 0.0f;
+                enterWorldPalette();
             }
             if (keys & KEY_X) {
                 int freeSlot = -1;
@@ -484,11 +582,10 @@ int main(void) {
                     generateWorld(&worlds[freeSlot]);
                     selectedWorld = freeSlot;
                     activeWorld = freeSlot;
-                    cursorX = 8;
-                    cursorZ = 8;
-                    cursorY = 3;
+                    playerX = 8.5f; playerY = 4.0f; playerZ = 8.5f;
+                    viewYaw = 0.0f; viewPitch = 0.0f;
                     saveWorlds();
-                    showPalette();
+                    enterWorldPalette();
                 } else {
                     consoleClear();
                     iprintf("Hai gia' creato 4 mondi!\n");
@@ -504,39 +601,30 @@ int main(void) {
             if (changed) showWorldMenu();
         } else {
             if (keys & KEY_B) {
-                activeWorld = -1;
-                showWorldMenu();
+                returnToWorldMenu();
             } else {
-                if (keys & KEY_UP)    { cursorZ--; changed = true; }
-                if (keys & KEY_DOWN)  { cursorZ++; changed = true; }
-                if (keys & KEY_LEFT)  { cursorX--; changed = true; }
-                if (keys & KEY_RIGHT) { cursorX++; changed = true; }
-                if (keys & KEY_X)     { cursorY--; changed = true; }
-                if (keys & KEY_Y)     { cursorY++; changed = true; }
-
-                if (keys & KEY_L) {
-                    breakBlock();
-                    saveWorlds();
-                    changed = true;
+                /* D-pad controls movement and turning, like a handheld FPS. */
+                float forward = 0.0f;
+                if (keys & KEY_UP) forward += 0.16f;
+                if (keys & KEY_DOWN) forward -= 0.16f;
+                if (keys & KEY_LEFT) viewYaw -= 0.09f;
+                if (keys & KEY_RIGHT) viewYaw += 0.09f;
+                if (forward != 0.0f) {
+                    playerX += sinf(viewYaw) * forward;
+                    playerZ -= cosf(viewYaw) * forward;
+                    if (playerX < 0.3f) playerX = 0.3f;
+                    if (playerX > WORLD_SIZE - 0.3f) playerX = WORLD_SIZE - 0.3f;
+                    if (playerZ < 0.3f) playerZ = 0.3f;
+                    if (playerZ > WORLD_SIZE - 0.3f) playerZ = WORLD_SIZE - 0.3f;
                 }
-                if (keys & KEY_R) {
-                    placeBlock();
-                    saveWorlds();
-                    changed = true;
-                }
-                if (keys & KEY_A) {
-                    interactBlock();
-                    changed = true;
-                }
-
+                if (keys & KEY_L) breakTargetBlock();
+                if (keys & KEY_R) placeTargetBlock();
+                if (keys & KEY_A) interactTargetBlock();
                 if (keys & KEY_TOUCH) {
                     touchPosition touch;
                     touchRead(&touch);
                     selectPaletteBlock(touch.px, touch.py);
                 }
-
-                keepCursorInWorld();
-                if (changed) showPalette();
             }
         }
 
