@@ -37,6 +37,7 @@ DSi Craft e' esclusivamente creativo: sempre giorno, niente ciclo notte, mob, me
 - L: rompi il blocco nella posizione del cursore.
 - R: piazza il blocco selezionato.
 - Touch: seleziona uno dei cinque blocchi.
+- SELECT: passa al blocco successivo.
 - B: torna al menu dei mondi.
 
 Il simbolo + sulla mappa indica il cursore di costruzione, non un personaggio.
