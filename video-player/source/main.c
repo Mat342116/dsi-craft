@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdbool.h>
 
 #define VIDEO_DIR "fat:/videos"
