@@ -1,43 +1,45 @@
 # DSi Craft
 
-Gioco fan-made creativo per Nintendo DSi, realizzato in C con **devkitPro/libnds**.
+Gioco fan-made creativo per Nintendo DSi, realizzato in C con devkitPro/devkitARM e libnds.
 
 ## Stato attuale
 
-Questa e' una prima versione giocabile in stile sandbox 2D testuale:
-- mondo a blocchi 16 x 16 con livelli di altezza;
+Prima versione giocabile in stile sandbox 2D testuale:
+- mondo a blocchi 16 x 16 con 8 livelli di altezza;
+- fino a 4 mondi selezionabili dal menu;
+- creazione di mondi vuoti con terreno iniziale;
 - blocchi: erba, terra, pietra, legno e sabbia;
-- movimento del cursore giocatore e regolazione dell'altezza;
+- cursore di costruzione, senza personaggio visibile o visuale in terza persona;
 - rottura e piazzamento dei blocchi;
-- selezione del blocco da usare tramite touch screen.
+- selezione del blocco tramite touch screen.
+
+I mondi sono attualmente conservati in memoria durante la sessione: non sono ancora salvati su SD e si perdono quando si spegne o riavvia la console.
 
 ## Modalita' di gioco
 
-DSi Craft e' pensato esclusivamente per la creativita':
-- nessun mob;
-- nessuna pioggia o evento atmosferico;
-- nessun ciclo meteo o sistema di sopravvivenza.
+DSi Craft e' esclusivamente creativo: niente mob, meteo, pioggia o sopravvivenza.
 
 ## Comandi
 
-| Input | Azione |
-| --- | --- |
-| Frecce | Muovi il giocatore sul mondo |
-| X / Y | Abbassa / alza il livello di lavoro |
-| L | Rompi il blocco nella posizione corrente |
-| R | Piazza il blocco selezionato |
-| Touch | Seleziona uno dei cinque blocchi |
+### Menu mondi
+- Frecce: seleziona uno dei quattro slot.
+- A: entra nel mondo selezionato, se gia' creato.
+- X: crea un mondo nel primo slot libero (massimo 4).
+
+### Dentro un mondo
+- Frecce: muovi il cursore sul terreno.
+- X / Y: abbassa / alza il livello di lavoro.
+- L: rompi il blocco nella posizione del cursore.
+- R: piazza il blocco selezionato.
+- Touch: seleziona uno dei cinque blocchi.
+- B: torna al menu dei mondi.
+
+Il simbolo + sulla mappa indica il cursore di costruzione, non un personaggio.
 
 ## Compilazione
 
-Serve un ambiente devkitPro con libnds installato. Dalla cartella del progetto:
-
-```sh
-make
-```
-
-Il Makefile usa `DEVKITPRO` e le regole di libnds. La ROM Nintendo DS (.nds) viene generata dal processo di build se l'ambiente e' configurato correttamente.
+Serve devkitPro con devkitARM e il pacchetto nds-dev (libnds) installati. Eseguire `make` dalla cartella del progetto. La GitHub Action installa nds-dev prima di compilare.
 
 ## Prossimi passi
 
-La base attuale e' volutamente semplice. Le prossime tappe sono una vera visualizzazione grafica dei blocchi, una telecamera/visuale di gioco, un sistema di salvataggio del mondo e controlli piu' rifiniti.
+Grafica a blocchi, salvataggio dei quattro mondi su scheda SD e controlli piu' rifiniti.
