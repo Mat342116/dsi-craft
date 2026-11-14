@@ -1,0 +1,38 @@
+name: Build DSi Video Player
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ feature/dsi-mp4-player ]
+    paths:
+      - 'video-player/**'
+      - '.github/workflows/dsi-video-player.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned Rocket Video playback engine
+        run: |
+          git clone https://github.com/RocketRobz/RocketVideoPlayer.git engine
+          git -C engine checkout 50803b9027ca43ab278c1486442fcfc70c90b309
+      - name: Compile Nintendo DS ROM with BlocksDS
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/engine:/work" \
+            -w /work/nds \
+            skylyrac/blocksds:slim-latest \
+            bash -lc "chmod +x ./make_cia && make"
+      - name: Package and verify ROM
+        run: |
+          test -s engine/nds/RocketVideoPlayer.nds
+          mkdir -p video-player/dist
+          cp engine/nds/RocketVideoPlayer.nds video-player/dist/DSiVideoPlayer.nds
+          file video-player/dist/DSiVideoPlayer.nds
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: DSi-Video-Player-ROM
+          path: video-player/dist/DSiVideoPlayer.nds
+          if-no-files-found: error
