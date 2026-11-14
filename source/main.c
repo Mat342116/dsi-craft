@@ -11,7 +11,7 @@
 #define SAVE_TEMP_PATH "fat:/dsi-craft.tmp"
 #define SAVE_BACKUP_PATH "fat:/dsi-craft.bak"
 #define SAVE_MAGIC 0x44534943
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2
 
 #define AIR 0
 #define GRASS 1
@@ -19,6 +19,10 @@
 #define STONE 3
 #define WOOD 4
 #define SAND 5
+#define DOOR_CLOSED 6
+#define DOOR_OPEN 7
+#define CHEST_CLOSED 8
+#define CHEST_OPEN 9
 
 typedef struct {
     unsigned char blocks[WORLD_SIZE][WORLD_HEIGHT][WORLD_SIZE];
@@ -41,14 +45,22 @@ static int cursorY = 3;
 static bool sdAvailable = false;
 static bool saveOk = false;
 
-static char blockSymbol(unsigned char block) {
+static const int paletteBlocks[7] = {
+    GRASS, DIRT, STONE, WOOD, SAND, DOOR_CLOSED, CHEST_CLOSED
+};
+
+static const char *blockName(unsigned char block) {
     switch (block) {
-        case GRASS: return 'G';
-        case DIRT:  return 'D';
-        case STONE: return 'S';
-        case WOOD:  return 'W';
-        case SAND:  return 'A';
-        default:    return '.';
+        case GRASS: return "ERBA";
+        case DIRT: return "TERRA";
+        case STONE: return "PIETRA";
+        case WOOD: return "LEGNO";
+        case SAND: return "SABBIA";
+        case DOOR_CLOSED:
+        case DOOR_OPEN: return "PORTA";
+        case CHEST_CLOSED:
+        case CHEST_OPEN: return "BAULE";
+        default: return "VUOTO";
     }
 }
 
@@ -77,8 +89,6 @@ static bool saveWorlds(void) {
     data.version = SAVE_VERSION;
     memcpy(data.worlds, worlds, sizeof(worlds));
 
-    /* Scrive prima un file temporaneo: il salvataggio precedente resta intatto
-       se la scheda si riempie o la scrittura viene interrotta. */
     remove(SAVE_TEMP_PATH);
     FILE *file = fopen(SAVE_TEMP_PATH, "wb");
     if (file == NULL) {
@@ -94,8 +104,6 @@ static bool saveWorlds(void) {
         return false;
     }
 
-    /* FAT non consente sempre rename() sopra un file esistente.
-       Prima recupera un eventuale backup lasciato da un'interruzione. */
     FILE *oldSave = fopen(SAVE_PATH, "rb");
     bool hadOldSave = oldSave != NULL;
     if (oldSave != NULL) fclose(oldSave);
@@ -109,9 +117,7 @@ static bool saveWorlds(void) {
         }
     }
 
-    if (hadOldSave) {
-        remove(SAVE_BACKUP_PATH);
-    }
+    if (hadOldSave) remove(SAVE_BACKUP_PATH);
     if (hadOldSave && rename(SAVE_PATH, SAVE_BACKUP_PATH) != 0) {
         remove(SAVE_TEMP_PATH);
         saveOk = false;
@@ -135,12 +141,11 @@ static void loadWorlds(void) {
 
     FILE *file = fopen(SAVE_PATH, "rb");
     if (file == NULL) {
-        /* Recupera il backup se la console si è spenta durante il salvataggio. */
         if (rename(SAVE_BACKUP_PATH, SAVE_PATH) == 0)
             file = fopen(SAVE_PATH, "rb");
     }
     if (file == NULL) {
-        saveOk = true; /* Primo avvio: non esiste ancora un file di salvataggio. */
+        saveOk = true;
         return;
     }
 
@@ -149,18 +154,22 @@ static void loadWorlds(void) {
     int extra = fgetc(file);
     fclose(file);
 
+    /* Version 1 worlds used only the five basic blocks. Their layout is
+       unchanged, so old saves can be loaded without resetting the worlds. */
     if (bytesRead != sizeof(data) || extra != EOF ||
-        data.magic != SAVE_MAGIC || data.version != SAVE_VERSION) {
+        data.magic != SAVE_MAGIC ||
+        (data.version != 1 && data.version != SAVE_VERSION)) {
         saveOk = false;
         return;
     }
 
+    unsigned char maxBlock = (data.version == 1) ? SAND : CHEST_OPEN;
     for (int i = 0; i < MAX_WORLDS; i++) {
         if (data.worlds[i].used) {
             for (int x = 0; x < WORLD_SIZE; x++) {
                 for (int y = 0; y < WORLD_HEIGHT; y++) {
                     for (int z = 0; z < WORLD_SIZE; z++) {
-                        if (data.worlds[i].blocks[x][y][z] > SAND) {
+                        if (data.worlds[i].blocks[x][y][z] > maxBlock) {
                             saveOk = false;
                             return;
                         }
@@ -194,8 +203,30 @@ static void showWorldMenu(void) {
     iprintf("Salvataggio SD: %s\n",
             !sdAvailable ? "SD NON DISPONIBILE" :
             (saveOk ? "OK" : "ERRORE"));
-    iprintf("Sempre giorno - nessun ciclo notte\n");
-    iprintf("Niente mob, meteo o sopravvivenza\n");
+    iprintf("Sempre giorno - modalita' creativa\n");
+    iprintf("Niente TNT, botole o fuoco\n");
+}
+
+static void showPalette(void) {
+    consoleClear();
+    iprintf("       DSi CRAFT - BLOCCHI\n");
+    iprintf(" Tocca un blocco per prenderlo\n");
+    iprintf("--------------------------------\n");
+    iprintf("[ERBA]  [TERRA] [PIETRA] [LEGNO]\n");
+    iprintf("   1       2       3       4\n");
+    iprintf("\n[SABBIA] [PORTA]  [BAULE]\n");
+    iprintf("   5       6       7\n");
+    iprintf("--------------------------------\n");
+    iprintf("MANO: %s\n", blockName((unsigned char)selectedBlock));
+    iprintf("Il blocco selezionato e' in mano\n");
+    iprintf("Frecce: muovi il puntatore\n");
+    iprintf("X/Y: cambia altezza\n");
+    iprintf("L: rompi  R: posa blocco\n");
+    iprintf("A: usa porta o baule\n");
+    iprintf("B: torna ai mondi\n");
+    iprintf("Salvataggio SD: %s\n",
+            !sdAvailable ? "non disponibile" :
+            (saveOk ? "OK" : "ERRORE"));
 }
 
 static void keepCursorInWorld(void) {
@@ -218,58 +249,204 @@ static void placeBlock(void) {
     }
 }
 
-static void showWorld(void) {
-    consoleClear();
-    iprintf("          DSi CRAFT\n");
-    iprintf("==============================\n");
-    iprintf(" MONDO %d - MODALITA' CREATIVA\n", activeWorld + 1);
-    iprintf(" CURSORE X/Z: %d/%d  LIVELLO: %d\n\n",
-            cursorX, cursorZ, cursorY);
+static void interactBlock(void) {
+    unsigned char *block =
+        &worlds[activeWorld].blocks[cursorX][cursorY][cursorZ];
 
-    iprintf("     ");
-    for (int x = 0; x < WORLD_SIZE; x++) iprintf("%X", x);
-    iprintf("\n");
+    if (*block == DOOR_CLOSED) *block = DOOR_OPEN;
+    else if (*block == DOOR_OPEN) *block = DOOR_CLOSED;
+    else if (*block == CHEST_CLOSED) *block = CHEST_OPEN;
+    else if (*block == CHEST_OPEN) *block = CHEST_CLOSED;
+    else return;
 
-    for (int z = 0; z < WORLD_SIZE; z++) {
-        iprintf(" %2X  ", z);
-        for (int x = 0; x < WORLD_SIZE; x++) {
-            if (x == cursorX && z == cursorZ) {
-                iprintf("+");
-            } else {
-                int y;
-                for (y = WORLD_HEIGHT - 1; y >= 0; y--) {
-                    if (worlds[activeWorld].blocks[x][y][z] != AIR) break;
-                }
-                iprintf("%c", y >= 0 ?
-                    blockSymbol(worlds[activeWorld].blocks[x][y][z]) : '.');
-            }
+    saveWorlds();
+}
+
+static void drawQuad(float x1, float y1, float z1,
+                     float x2, float y2, float z2,
+                     float x3, float y3, float z3,
+                     float x4, float y4, float z4,
+                     int color) {
+    glColor(color);
+    glBegin(GL_QUADS);
+    glVertex3f(x1, y1, z1);
+    glVertex3f(x2, y2, z2);
+    glVertex3f(x3, y3, z3);
+    glVertex3f(x4, y4, z4);
+    glEnd();
+}
+
+static void drawCuboid(float x0, float y0, float z0,
+                       float x1, float y1, float z1,
+                       int topColor, int sideColor, int frontColor) {
+    drawQuad(x0,y1,z0, x1,y1,z0, x1,y1,z1, x0,y1,z1, topColor);
+    drawQuad(x0,y0,z1, x1,y0,z1, x1,y0,z0, x0,y0,z0, sideColor);
+    drawQuad(x0,y0,z0, x0,y1,z0, x0,y1,z1, x0,y0,z1, sideColor);
+    drawQuad(x1,y0,z1, x1,y1,z1, x1,y1,z0, x1,y0,z0, sideColor);
+    drawQuad(x1,y0,z0, x1,y1,z0, x0,y1,z0, x0,y0,z0, sideColor);
+    drawQuad(x0,y0,z1, x0,y1,z1, x1,y1,z1, x1,y0,z1, frontColor);
+}
+
+static int blockColor(unsigned char block) {
+    switch (block) {
+        case GRASS: return RGB15(12,25,7);
+        case DIRT: return RGB15(20,11,5);
+        case STONE: return RGB15(17,17,19);
+        case WOOD: return RGB15(22,14,5);
+        case SAND: return RGB15(28,25,13);
+        default: return RGB15(20,13,5);
+    }
+}
+
+static void drawBlock(int x, int y, int z, unsigned char block) {
+    float a = (float)x - 8.0f;
+    float b = (float)y;
+    float c = (float)z - 8.0f;
+    float X = a + 1.0f, Y = b + 1.0f, Z = c + 1.0f;
+    World *w = &worlds[activeWorld];
+
+    if (block == DOOR_CLOSED || block == DOOR_OPEN) {
+        if (block == DOOR_CLOSED) {
+            drawCuboid(a,b,c+0.43f, X,Y,c+0.57f,
+                       RGB15(22,13,5), RGB15(13,7,2), RGB15(25,15,6));
+        } else {
+            drawCuboid(a+0.43f,b,c, a+0.57f,Y,Z,
+                       RGB15(22,13,5), RGB15(13,7,2), RGB15(25,15,6));
         }
-        iprintf("\n");
+        return;
     }
 
-    iprintf("\n==============================\n");
-    iprintf(" BLOCCO: %d (1=G 2=D 3=S 4=W 5=A)\n", selectedBlock);
-    iprintf(" TOUCH: seleziona in 5 zone orizzontali\n");
-    iprintf(" SELECT: blocco successivo\n");
-    iprintf(" FRECCE: muovi cursore X/Y: livello\n");
-    iprintf(" L: rompi  R: piazza  B: menu mondi\n");
-    iprintf(" + indica il cursore, non un personaggio\n");
-    iprintf(" Salvataggio: %s\n",
-            !sdAvailable ? "SD non disponibile" :
-            (saveOk ? "OK" : "ERRORE"));
+    if (block == CHEST_CLOSED || block == CHEST_OPEN) {
+        drawCuboid(a+0.10f,b,c+0.10f, X-0.10f,b+0.72f,Z-0.10f,
+                   RGB15(22,13,4), RGB15(14,8,2), RGB15(25,15,5));
+        if (block == CHEST_CLOSED) {
+            drawCuboid(a+0.10f,b+0.72f,c+0.10f,
+                       X-0.10f,Y,Z-0.10f,
+                       RGB15(26,17,6), RGB15(18,10,3), RGB15(28,19,7));
+        } else {
+            drawCuboid(a+0.10f,b+0.72f,c+0.10f,
+                       X-0.10f,Y,c+0.28f,
+                       RGB15(26,17,6), RGB15(18,10,3), RGB15(28,19,7));
+        }
+        return;
+    }
+
+    int top = blockColor(block);
+    int side = (block == GRASS) ? RGB15(17,10,4) : RGB15(10,10,10);
+    int front = (block == GRASS) ? RGB15(17,10,4) : RGB15(15,15,15);
+
+    if (y == WORLD_HEIGHT - 1 || w->blocks[x][y+1][z] == AIR)
+        drawQuad(a,Y,c, X,Y,c, X,Y,Z, a,Y,Z, top);
+    if (y > 0 && w->blocks[x][y-1][z] == AIR)
+        drawQuad(a,b,Z, X,b,Z, X,b,c, a,b,c, RGB15(8,8,8));
+    if (x == 0 || w->blocks[x-1][y][z] == AIR)
+        drawQuad(a,b,c, a,Y,c, a,Y,Z, a,b,Z, side);
+    if (x == WORLD_SIZE-1 || w->blocks[x+1][y][z] == AIR)
+        drawQuad(X,b,Z, X,Y,Z, X,Y,c, X,b,c, RGB15(18,18,18));
+    if (z == 0 || w->blocks[x][y][z-1] == AIR)
+        drawQuad(X,b,c, X,Y,c, a,Y,c, a,b,c, RGB15(15,15,15));
+    if (z == WORLD_SIZE-1 || w->blocks[x][y][z+1] == AIR)
+        drawQuad(a,b,Z, a,Y,Z, X,Y,Z, X,b,Z, front);
+}
+
+static void drawBuildMarker(void) {
+    float x = (float)cursorX - 8.0f;
+    float y = (float)cursorY + 0.035f;
+    float z = (float)cursorZ - 8.0f;
+    int marker = RGB15(31,31,0);
+
+    /* Bright X-shaped placement pointer on the selected block. */
+    drawQuad(x+0.04f,y,z+0.12f,
+             x+0.12f,y,z+0.04f,
+             x+0.96f,y,z+0.88f,
+             x+0.88f,y,z+0.96f, marker);
+    drawQuad(x+0.04f,y,z+0.88f,
+             x+0.12f,y,z+0.96f,
+             x+0.96f,y,z+0.12f,
+             x+0.88f,y,z+0.04f, marker);
+}
+
+static void drawBlockInHand(void) {
+    int color = blockColor((unsigned char)selectedBlock);
+
+    /* A small hand and the selected block stay visible in the lower-right
+       corner of the first-person view. */
+    glPushMatrix();
+    glLoadIdentity();
+    glTranslatef(0.78f, -0.62f, -2.6f);
+    drawCuboid(-0.10f,-0.18f,-0.08f, 0.16f,0.02f,0.18f,
+               RGB15(26,18,13), RGB15(23,14,9), RGB15(28,20,15));
+    glTranslatef(-0.10f, 0.16f, 0.04f);
+    drawCuboid(-0.18f,-0.18f,-0.18f, 0.18f,0.18f,0.18f,
+               color, color, color);
+    glPopMatrix(1);
+}
+
+static void renderWorld3D(void) {
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(58.0f, 256.0f/192.0f, 0.1f, 80.0f);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(12.0f, 11.0f, 14.0f,
+              0.0f, 1.5f, 0.0f,
+              0.0f, 1.0f, 0.0f);
+
+    glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE);
+
+    for (int y = 0; y < WORLD_HEIGHT; y++) {
+        for (int z = 0; z < WORLD_SIZE; z++) {
+            for (int x = 0; x < WORLD_SIZE; x++) {
+                unsigned char block = worlds[activeWorld].blocks[x][y][z];
+                if (block != AIR) drawBlock(x, y, z, block);
+            }
+        }
+    }
+
+    drawBuildMarker();
+    drawBlockInHand();
+    glFlush(0);
+}
+
+static void selectPaletteBlock(int x, int y) {
+    int slot = -1;
+
+    if (y >= 40 && y < 100) {
+        slot = x / 64;
+        if (slot < 0 || slot > 3) return;
+    } else if (y >= 104 && y < 168) {
+        slot = 4 + x / 64;
+        if (slot < 4 || slot > 6) return;
+    } else {
+        return;
+    }
+
+    selectedBlock = paletteBlocks[slot];
+    showPalette();
 }
 
 int main(void) {
-    videoSetMode(MODE_0_2D);
+    videoSetMode(MODE_0_3D);
     videoSetModeSub(MODE_0_2D);
-    vramSetBankA(VRAM_A_MAIN_BG);
+    lcdMainOnTop();
+
+    vramSetBankA(VRAM_A_TEXTURE);
+    vramSetBankB(VRAM_B_TEXTURE);
     vramSetBankC(VRAM_C_SUB_BG);
-    consoleDemoInit();
+
+    consoleInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x256,
+                31, 0, false, true);
+
+    glInit();
+    glEnable(GL_ANTIALIAS);
+    glClearColor(12, 20, 31, 31);
+    glClearPolyID(63);
+    glClearDepth(GL_MAX_DEPTH);
+    glViewport(0, 0, 255, 191);
 
     sdAvailable = fatInitDefault();
-    if (sdAvailable) {
-        loadWorlds();
-    }
+    if (sdAvailable) loadWorlds();
 
     showWorldMenu();
 
@@ -287,14 +464,12 @@ int main(void) {
                 selectedWorld = (selectedWorld + 1) % MAX_WORLDS;
                 changed = true;
             }
-            if (keys & KEY_A) {
-                if (worlds[selectedWorld].used) {
-                    activeWorld = selectedWorld;
-                    cursorX = 8;
-                    cursorZ = 8;
-                    cursorY = 3;
-                    showWorld();
-                }
+            if ((keys & KEY_A) && worlds[selectedWorld].used) {
+                activeWorld = selectedWorld;
+                cursorX = 8;
+                cursorZ = 8;
+                cursorY = 3;
+                showPalette();
             }
             if (keys & KEY_X) {
                 int freeSlot = -1;
@@ -304,15 +479,16 @@ int main(void) {
                         break;
                     }
                 }
+
                 if (freeSlot >= 0) {
                     generateWorld(&worlds[freeSlot]);
                     selectedWorld = freeSlot;
                     activeWorld = freeSlot;
-                    saveWorlds();
                     cursorX = 8;
                     cursorZ = 8;
                     cursorY = 3;
-                    showWorld();
+                    saveWorlds();
+                    showPalette();
                 } else {
                     consoleClear();
                     iprintf("Hai gia' creato 4 mondi!\n");
@@ -337,27 +513,34 @@ int main(void) {
                 if (keys & KEY_RIGHT) { cursorX++; changed = true; }
                 if (keys & KEY_X)     { cursorY--; changed = true; }
                 if (keys & KEY_Y)     { cursorY++; changed = true; }
-                if (keys & KEY_SELECT) { selectedBlock = selectedBlock % SAND + 1; changed = true; }
-                if (keys & KEY_L)     { breakBlock(); saveWorlds(); changed = true; }
-                if (keys & KEY_R)     { placeBlock(); saveWorlds(); changed = true; }
+
+                if (keys & KEY_L) {
+                    breakBlock();
+                    saveWorlds();
+                    changed = true;
+                }
+                if (keys & KEY_R) {
+                    placeBlock();
+                    saveWorlds();
+                    changed = true;
+                }
+                if (keys & KEY_A) {
+                    interactBlock();
+                    changed = true;
+                }
 
                 if (keys & KEY_TOUCH) {
                     touchPosition touch;
                     touchRead(&touch);
-                    if (touch.px < 255 && touch.py < 192) {
-                        int slot = touch.px / 51;
-                        if (slot >= 0 && slot < 5) {
-                            selectedBlock = slot + 1;
-                            changed = true;
-                        }
-                    }
+                    selectPaletteBlock(touch.px, touch.py);
                 }
 
                 keepCursorInWorld();
-                if (changed) showWorld();
+                if (changed) showPalette();
             }
         }
 
+        if (activeWorld >= 0) renderWorld3D();
         swiWaitForVBlank();
     }
 
