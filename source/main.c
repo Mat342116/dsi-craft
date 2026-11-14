@@ -335,6 +335,7 @@ int main(void) {
                 if (keys & KEY_DOWN)  { cursorZ++; changed = true; }
                 if (keys & KEY_LEFT)  { cursorX--; changed = true; }
                 if (keys & KEY_RIGHT) { cursorX++; changed = true; }
+                if (keys & KEY_X)     { cursorY--; changed = true; }
                 if (keys & KEY_Y)     { cursorY++; changed = true; }
                 if (keys & KEY_SELECT) { selectedBlock = selectedBlock % SAND + 1; changed = true; }
                 if (keys & KEY_L)     { breakBlock(); saveWorlds(); changed = true; }
