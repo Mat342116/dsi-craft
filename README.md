@@ -16,6 +16,10 @@ La vecchia schermata sandbox 2D testuale è stata sostituita da un prototipo 3D 
 
 Il renderer è una prima implementazione software leggera, pensata per l'hardware Nintendo DS. Non è ancora un motore 3D completo con texture dettagliate o illuminazione avanzata.
 
+## Avvio
+
+All'accensione il gioco entra automaticamente nel primo mondo salvato. Se non esiste ancora un mondo, ne crea uno nuovo nel primo slot. Premi START per aprire il menu dei mondi.
+
 ## Comandi
 
 ### Menu dei mondi
