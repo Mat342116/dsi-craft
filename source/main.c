@@ -7,8 +7,9 @@
 #define WORLD_SIZE 16
 #define WORLD_HEIGHT 8
 #define MAX_WORLDS 4
-#define SAVE_PATH "sd:/dsi-craft.sav"
-#define SAVE_TEMP_PATH "sd:/dsi-craft.tmp"
+#define SAVE_PATH "fat:/dsi-craft.sav"
+#define SAVE_TEMP_PATH "fat:/dsi-craft.tmp"
+#define SAVE_BACKUP_PATH "fat:/dsi-craft.bak"
 #define SAVE_MAGIC 0x44534943
 #define SAVE_VERSION 1
 
@@ -76,6 +77,9 @@ static bool saveWorlds(void) {
     data.version = SAVE_VERSION;
     memcpy(data.worlds, worlds, sizeof(worlds));
 
+    /* Scrive prima un file temporaneo: il salvataggio precedente resta intatto
+       se la scheda si riempie o la scrittura viene interrotta. */
+    remove(SAVE_TEMP_PATH);
     FILE *file = fopen(SAVE_TEMP_PATH, "wb");
     if (file == NULL) {
         saveOk = false;
@@ -84,12 +88,33 @@ static bool saveWorlds(void) {
 
     bool written = fwrite(&data, 1, sizeof(data), file) == sizeof(data);
     bool closed = fclose(file) == 0;
-    if (!written || !closed || rename(SAVE_TEMP_PATH, SAVE_PATH) != 0) {
+    if (!written || !closed) {
         remove(SAVE_TEMP_PATH);
         saveOk = false;
         return false;
     }
 
+    /* FAT non consente sempre rename() sopra un file esistente.
+       Sposta il vecchio salvataggio in backup e ripristinalo se serve. */
+    remove(SAVE_BACKUP_PATH);
+    FILE *oldSave = fopen(SAVE_PATH, "rb");
+    bool hadOldSave = oldSave != NULL;
+    if (oldSave != NULL) fclose(oldSave);
+
+    if (hadOldSave && rename(SAVE_PATH, SAVE_BACKUP_PATH) != 0) {
+        remove(SAVE_TEMP_PATH);
+        saveOk = false;
+        return false;
+    }
+
+    if (rename(SAVE_TEMP_PATH, SAVE_PATH) != 0) {
+        if (hadOldSave) rename(SAVE_BACKUP_PATH, SAVE_PATH);
+        remove(SAVE_TEMP_PATH);
+        saveOk = false;
+        return false;
+    }
+
+    if (hadOldSave) remove(SAVE_BACKUP_PATH);
     saveOk = true;
     return true;
 }
@@ -294,7 +319,7 @@ int main(void) {
                 if (keys & KEY_LEFT)  { cursorX--; changed = true; }
                 if (keys & KEY_RIGHT) { cursorX++; changed = true; }
                 if (keys & KEY_X)     { cursorY--; changed = true; }
-                if (keys & KEY_Y)     { cursorY++; changed = true; }
+                if (keys & KEY_Y)     { cursorY++; changed = true; }\n                if (keys & KEY_SELECT) { selectedBlock = selectedBlock % SAND + 1; changed = true; }
                 if (keys & KEY_L)     { breakBlock(); saveWorlds(); changed = true; }
                 if (keys & KEY_R)     { placeBlock(); saveWorlds(); changed = true; }
 
