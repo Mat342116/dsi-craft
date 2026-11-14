@@ -249,7 +249,7 @@ static void showWorld(void) {
 
     iprintf("\n==============================\n");
     iprintf(" BLOCCO: %d (1=G 2=D 3=S 4=W 5=A)\n", selectedBlock);
-    iprintf(" TOUCH: scegli blocco nella barra\n");
+    iprintf(" TOUCH: seleziona in 5 zone orizzontali\n");
     iprintf(" SELECT: blocco successivo\n");
     iprintf(" FRECCE: muovi cursore X/Y: livello\n");
     iprintf(" L: rompi  R: piazza  B: menu mondi\n");
