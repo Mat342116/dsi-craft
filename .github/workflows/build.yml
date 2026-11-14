@@ -3,7 +3,7 @@ name: Build DSi Craft
 on:
   workflow_dispatch:
   push:
-    branches: [ main, feature/creative-mode-core ]
+    branches: [ main, feature/creative-mode-core, feature/real-3d-renderer, feature/first-person-minecraft-ui ]
   pull_request:
     branches: [ main ]
 
