@@ -16,7 +16,7 @@ Prima versione giocabile in stile sandbox 2D testuale:
 
 ## Salvataggi
 
-I quattro mondi vengono caricati all'avvio e salvati automaticamente sulla scheda SD del Nintendo DSi nel file `sd:/dsi-craft.sav`. Il salvataggio viene aggiornato quando crei un mondo, rompi un blocco o ne piazzi uno.
+I quattro mondi vengono caricati all'avvio e salvati automaticamente sulla scheda SD del Nintendo DSi nel file `fat:/dsi-craft.sav`. Il salvataggio viene aggiornato quando crei un mondo, rompi un blocco o ne piazzi uno.
 
 La schermata mostra lo stato del salvataggio. Se la scheda SD non è disponibile o la scrittura fallisce, il gioco lo segnala: in quel caso le modifiche restano solo in memoria e non bisogna considerarle salvate. Non rimuovere la scheda SD mentre il gioco sta salvando.
 
