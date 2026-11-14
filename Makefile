@@ -1,5 +1,9 @@
 .SUFFIXES:
 
+ifeq ($(strip $(DEVKITPRO)),)
+$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro")
+endif
+
 TARGET := DSiCraft
 BUILD := build
 SOURCES := source
@@ -15,8 +19,4 @@ LDFLAGS := -specs=ds_arm9.specs -g $(ARCH)
 LIBS := -lnds9 -lfat
 LIBDIRS := $(LIBNDS)
 
-ifeq ($(strip $(DEVKITARM)),)
-$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
-endif
-
-include $(DEVKITARM)/ds_rules
+include $(DEVKITPRO)/libnds/nds_rules
