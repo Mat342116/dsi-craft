@@ -1,9 +1,10 @@
-
 name: Build DSi Craft
 
 on:
   workflow_dispatch:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
 
 jobs:
