@@ -1,4 +1,3 @@
-
 #include <nds.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -18,7 +17,18 @@ static unsigned char world[WORLD_SIZE][WORLD_HEIGHT][WORLD_SIZE];
 static int selectedBlock = GRASS;
 static int playerX = 8;
 static int playerZ = 8;
-static int playerY = 2;
+static int playerY = 3;
+
+static char blockSymbol(unsigned char block) {
+    switch (block) {
+        case GRASS: return 'G';
+        case DIRT:  return 'D';
+        case STONE: return 'S';
+        case WOOD:  return 'W';
+        case SAND:  return 'A';
+        default:    return '.';
+    }
+}
 
 void generateWorld(void) {
     for (int x = 0; x < WORLD_SIZE; x++) {
@@ -26,22 +36,68 @@ void generateWorld(void) {
             world[x][0][z] = STONE;
             world[x][1][z] = DIRT;
             world[x][2][z] = GRASS;
+            for (int y = 3; y < WORLD_HEIGHT; y++) {
+                world[x][y][z] = AIR;
+            }
         }
     }
 }
 
-void showInventory(void) {
+static void keepPlayerInWorld(void) {
+    if (playerX < 0) playerX = 0;
+    if (playerX >= WORLD_SIZE) playerX = WORLD_SIZE - 1;
+    if (playerZ < 0) playerZ = 0;
+    if (playerZ >= WORLD_SIZE) playerZ = WORLD_SIZE - 1;
+    if (playerY < 1) playerY = 1;
+    if (playerY >= WORLD_HEIGHT) playerY = WORLD_HEIGHT - 1;
+}
+
+static void breakBlock(void) {
+    if (world[playerX][playerY][playerZ] != AIR) {
+        world[playerX][playerY][playerZ] = AIR;
+    }
+}
+
+static void placeBlock(void) {
+    if (world[playerX][playerY][playerZ] == AIR) {
+        world[playerX][playerY][playerZ] = (unsigned char)selectedBlock;
+    }
+}
+
+static void showWorld(void) {
     consoleClear();
-    iprintf("     DSi CRAFT\n");
-    iprintf("====================\n");
-    iprintf(" CREATIVE MODE\n\n");
-    iprintf(" 1. GRASS\n");
-    iprintf(" 2. DIRT\n");
-    iprintf(" 3. STONE\n");
-    iprintf(" 4. WOOD\n");
-    iprintf(" 5. SAND\n");
-    iprintf("====================\n");
-    iprintf(" BLOCCO: %d\n", selectedBlock);
+    iprintf("          DSi CRAFT\n");
+    iprintf("==============================\n");
+    iprintf(" MODALITA' CREATIVA - MONDO\n");
+    iprintf(" X/Z: %d/%d   ALTEZZA: %d\n\n", playerX, playerZ, playerY);
+
+    iprintf("     ");
+    for (int x = 0; x < WORLD_SIZE; x++) iprintf("%X", x);
+    iprintf("\n");
+
+    for (int z = 0; z < WORLD_SIZE; z++) {
+        iprintf(" %2X  ", z);
+        for (int x = 0; x < WORLD_SIZE; x++) {
+            if (x == playerX && z == playerZ) {
+                iprintf("@");
+            } else {
+                int y;
+                for (y = WORLD_HEIGHT - 1; y >= 0; y--) {
+                    if (world[x][y][z] != AIR) break;
+                }
+                iprintf("%c", y >= 0 ? blockSymbol(world[x][y][z]) : '.');
+            }
+        }
+        iprintf("\n");
+    }
+
+    iprintf("\n==============================\n");
+    iprintf(" BLOCCO: %d ", selectedBlock);
+    iprintf("(1=G 2=D 3=S 4=W 5=A)\n");
+    iprintf(" TAP: scegli blocco (parte bassa)\n");
+    iprintf(" FRECCE: muovi  X/Y: altezza\n");
+    iprintf(" L: rompi blocco   R: piazza\n");
+    iprintf(" Solo creativa: niente mob/meteo\n");
 }
 
 int main(void) {
@@ -52,49 +108,40 @@ int main(void) {
     vramSetBankC(VRAM_C_SUB_BG);
 
     consoleDemoInit();
-    consoleInit(
-        NULL, 0,
-        BgType_Text4bpp,
-        BgSize_T_256x256,
-        31, 0,
-        true, true
-    );
 
     generateWorld();
+    showWorld();
 
     while (1) {
         scanKeys();
         int keys = keysDown();
+        bool changed = false;
 
-        if (keys & KEY_UP) playerZ--;
-        if (keys & KEY_DOWN) playerZ++;
-        if (keys & KEY_LEFT) playerX--;
-        if (keys & KEY_RIGHT) playerX++;
+        if (keys & KEY_UP)    { playerZ--; changed = true; }
+        if (keys & KEY_DOWN)  { playerZ++; changed = true; }
+        if (keys & KEY_LEFT)  { playerX--; changed = true; }
+        if (keys & KEY_RIGHT) { playerX++; changed = true; }
 
-        if (keys & KEY_X) playerY--;
-        if (keys & KEY_Y) playerY++;
+        if (keys & KEY_X) { playerY--; changed = true; }
+        if (keys & KEY_Y) { playerY++; changed = true; }
 
-        if (keys & KEY_L) {
-            iprintf("\nRottura blocco\n");
-        }
-
-        if (keys & KEY_R) {
-            iprintf("\nPiazzamento blocco\n");
-        }
-
-        touchPosition touch;
-        touchRead(&touch);
+        if (keys & KEY_L) { breakBlock(); changed = true; }
+        if (keys & KEY_R) { placeBlock(); changed = true; }
 
         if (keys & KEY_TOUCH) {
-            int slot = touch.px / 51;
-            if (slot >= 0 && slot < 5)
-                selectedBlock = slot + 1;
+            touchPosition touch;
+            touchRead(&touch);
+            if (touch.py >= 0 && touch.py < 192) {
+                int slot = touch.px / 51;
+                if (slot >= 0 && slot < 5) {
+                    selectedBlock = slot + 1;
+                    changed = true;
+                }
+            }
         }
 
-        if (playerX < 0) playerX = 0;
-        if (playerX >= WORLD_SIZE) playerX = WORLD_SIZE - 1;
-        if (playerZ < 0) playerZ = 0;
-        if (playerZ >= WORLD_SIZE) playerZ = WORLD_SIZE - 1;
+        keepPlayerInWorld();
+        if (changed) showWorld();
 
         swiWaitForVBlank();
     }
