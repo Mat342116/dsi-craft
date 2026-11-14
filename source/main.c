@@ -379,7 +379,7 @@ static void drawBlockInHand(void) {
     glTranslatef(-0.10f, 0.16f, 0.04f);
     drawCuboid(-0.18f,-0.18f,-0.18f, 0.18f,0.18f,0.18f,
                color, color, color);
-    glPopMatrix();
+    glPopMatrix(1);
 }
 
 static void renderWorld3D(void) {
