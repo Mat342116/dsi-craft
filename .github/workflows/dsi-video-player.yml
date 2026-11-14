@@ -1,0 +1,32 @@
+name: Build DSi Video Player
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ feature/dsi-mp4-player ]
+    paths:
+      - 'video-player/**'
+      - '.github/workflows/dsi-video-player.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Nintendo DS ROM
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work/video-player \
+            devkitpro/devkitarm:latest \
+            bash -lc "make"
+      - name: Verify ROM
+        run: |
+          test -s video-player/DSiVideoPlayer.nds
+          file video-player/DSiVideoPlayer.nds
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: DSi-Video-Player-ROM
+          path: video-player/DSiVideoPlayer.nds
+          if-no-files-found: error
