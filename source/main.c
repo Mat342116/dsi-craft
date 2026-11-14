@@ -218,47 +218,102 @@ static void placeBlock(void) {
     }
 }
 
-static void showWorld(void) {
-    consoleClear();
-    iprintf("          DSi CRAFT\n");
-    iprintf("==============================\n");
-    iprintf(" MONDO %d - MODALITA' CREATIVA\n", activeWorld + 1);
-    iprintf(" CURSORE X/Z: %d/%d  LIVELLO: %d\n\n",
-            cursorX, cursorZ, cursorY);
 
-    iprintf("     ");
-    for (int x = 0; x < WORLD_SIZE; x++) iprintf("%X", x);
-    iprintf("\n");
-
-    for (int z = 0; z < WORLD_SIZE; z++) {
-        iprintf(" %2X  ", z);
-        for (int x = 0; x < WORLD_SIZE; x++) {
-            if (x == cursorX && z == cursorZ) {
-                iprintf("+");
-            } else {
-                int y;
-                for (y = WORLD_HEIGHT - 1; y >= 0; y--) {
-                    if (worlds[activeWorld].blocks[x][y][z] != AIR) break;
-                }
-                iprintf("%c", y >= 0 ?
-                    blockSymbol(worlds[activeWorld].blocks[x][y][z]) : '.');
-            }
-        }
-        iprintf("\n");
-    }
-
-    iprintf("\n==============================\n");
-    iprintf(" BLOCCO: %d (1=G 2=D 3=S 4=W 5=A)\n", selectedBlock);
-    iprintf(" TOUCH: seleziona in 5 zone orizzontali\n");
-    iprintf(" SELECT: blocco successivo\n");
-    iprintf(" FRECCE: muovi cursore X/Y: livello\n");
-    iprintf(" L: rompi  R: piazza  B: menu mondi\n");
-    iprintf(" + indica il cursore, non un personaggio\n");
-    iprintf(" Salvataggio: %s\n",
-            !sdAvailable ? "SD non disponibile" :
-            (saveOk ? "OK" : "ERRORE"));
+static void drawQuad(float x1,float y1,float z1,float x2,float y2,float z2,
+                     float x3,float y3,float z3,float x4,float y4,float z4,
+                     int color) {
+    glColor(color);
+    glBegin(GL_QUADS);
+    glVertex3f(x1,y1,z1); glVertex3f(x2,y2,z2);
+    glVertex3f(x3,y3,z3); glVertex3f(x4,y4,z4);
+    glEnd();
 }
 
+static int blockColor(unsigned char block) {
+    switch (block) {
+        case GRASS: return RGB15(12,25,7);
+        case DIRT:  return RGB15(20,11,5);
+        case STONE: return RGB15(17,17,19);
+        case WOOD:  return RGB15(22,14,5);
+        case SAND:  return RGB15(28,25,13);
+        default:    return RGB15(31,31,31);
+    }
+}
+
+static void drawBlock(int x,int y,int z,unsigned char block) {
+    float a=(float)x-8.0f, b=(float)y, c=(float)z-8.0f;
+    float X=a+1.0f, Y=b+1.0f, Z=c+1.0f;
+    int color=blockColor(block);
+    World *w=&worlds[activeWorld];
+    /* Render only exposed faces, keeping the DS geometry workload modest. */
+    if (y==WORLD_HEIGHT-1 || w->blocks[x][y+1][z]==AIR)
+        drawQuad(a,Y,c, X,Y,c, X,Y,Z, a,Y,Z,color);
+    if (y==0 || w->blocks[x][y-1][z]==AIR)
+        drawQuad(a,b,Z, X,b,Z, X,b,c, a,b,c,RGB15(8,8,8));
+    if (x==0 || w->blocks[x-1][y][z]==AIR)
+        drawQuad(a,b,c, a,Y,c, a,Y,Z, a,b,Z,RGB15(12,12,12));
+    if (x==WORLD_SIZE-1 || w->blocks[x+1][y][z]==AIR)
+        drawQuad(X,b,Z, X,Y,Z, X,Y,c, X,b,c,RGB15(18,18,18));
+    if (z==0 || w->blocks[x][y][z-1]==AIR)
+        drawQuad(X,b,c, X,Y,c, a,Y,c, a,b,c,RGB15(15,15,15));
+    if (z==WORLD_SIZE-1 || w->blocks[x][y][z+1]==AIR)
+        drawQuad(a,b,Z, a,Y,Z, X,Y,Z, X,b,Z,RGB15(21,21,21));
+}
+
+static void renderWorld3D(void) {
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(58.0f,256.0f/192.0f,0.1f,80.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(20.0f,19.0f,23.0f, 0.0f,2.0f,0.0f, 0.0f,1.0f,0.0f);
+    glClearColor(12,20,31,31);
+    glClearDepth(GL_MAX_DEPTH);
+    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    glPolyFmt(POLY_ALPHA(31)|POLY_CULL_NONE);
+    for (int y=0;y<WORLD_HEIGHT;y++) {
+        for (int z=0;z<WORLD_SIZE;z++) {
+            for (int x=0;x<WORLD_SIZE;x++) {
+                unsigned char block=worlds[activeWorld].blocks[x][y][z];
+                if (block!=AIR) drawBlock(x,y,z,block);
+            }
+        }
+    }
+    /* A bright wireframe cube marks the selected build position. */
+    float x=(float)cursorX-7.5f, y=(float)cursorY+0.02f, z=(float)cursorZ-7.5f;
+    glColor(RGB15(31,31,0));
+    glBegin(GL_LINES);
+    glVertex3f(x,y,z); glVertex3f(x+1,y,z);
+    glVertex3f(x+1,y,z); glVertex3f(x+1,y,z+1);
+    glVertex3f(x+1,y,z+1); glVertex3f(x,y,z+1);
+    glVertex3f(x,y,z+1); glVertex3f(x,y,z);
+    glVertex3f(x,y+1,z); glVertex3f(x+1,y+1,z);
+    glVertex3f(x+1,y+1,z); glVertex3f(x+1,y+1,z+1);
+    glVertex3f(x+1,y+1,z+1); glVertex3f(x,y+1,z+1);
+    glVertex3f(x,y+1,z+1); glVertex3f(x,y+1,z);
+    glVertex3f(x,y,z); glVertex3f(x,y+1,z);
+    glVertex3f(x+1,y,z); glVertex3f(x+1,y+1,z);
+    glVertex3f(x+1,y,z+1); glVertex3f(x+1,y+1,z+1);
+    glVertex3f(x,y,z+1); glVertex3f(x,y+1,z+1);
+    glEnd();
+    glFlush(0);
+}
+
+static void showWorld(void) {
+    consoleClear();
+    iprintf("DSi CRAFT  |  MONDO %d\n",activeWorld+1);
+    iprintf("   MODALITA' CREATIVA 3D\n");
+    iprintf("------------------------------\n");
+    iprintf("Posizione: X %d  Y %d  Z %d\n",cursorX,cursorY,cursorZ);
+    iprintf("Blocco selezionato: %d\n",selectedBlock);
+    iprintf("SELECT: cambia blocco\n");
+    iprintf("Frecce: muovi  X/Y: altezza\n");
+    iprintf("L: rompi blocco  R: piazza\n");
+    iprintf("B: menu mondi\n");
+    iprintf("------------------------------\n");
+    iprintf("SD: %s\n",!sdAvailable?"non disponibile":(saveOk?"salvataggio OK":"errore salvataggio"));
+    iprintf("Schermo superiore: mondo 3D\n");
+}
 int main(void) {
     videoSetMode(MODE_0_2D);
     videoSetModeSub(MODE_0_2D);
