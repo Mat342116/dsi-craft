@@ -9,6 +9,7 @@ $(error DEVKITARM is not set)
 endif
 
 # Current devkitARM Nintendo DS build rules.
+# The official rules create DSiCraft.nds from the DSiCraft target.
 include $(DEVKITARM)/ds_rules
 
 TARGET := DSiCraft
