@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 
 #define WORLD_SIZE 16
 #define WORLD_HEIGHT 8
@@ -53,6 +54,8 @@ static float viewYaw = 0.0f;
 static float viewPitch = 0.0f;
 static int paletteBg = -1;
 static u16 *palettePixels = NULL;
+
+static int blockColor(unsigned char block);
 
 static const int paletteBlocks[7] = {
     GRASS, DIRT, STONE, WOOD, SAND, DOOR_CLOSED, CHEST_CLOSED
