@@ -1,0 +1,26 @@
+name: Build DSi MP4 Player
+on:
+  push:
+    branches: [dsi-mp4-player-prototype]
+    paths:
+      - 'dsi-mp4-player/**'
+      - '.github/workflows/dsi-mp4-player.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up devkitPro
+        uses: devkitPro/gh-actions@v1
+      - name: Install Nintendo DS toolchain
+        run: dkp-pacman -S --noconfirm nds-dev
+      - name: Compile ROM
+        working-directory: dsi-mp4-player
+        run: make
+      - name: Upload NDS
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsi-mp4-player
+          path: dsi-mp4-player/dsi-mp4-player.nds
