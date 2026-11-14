@@ -306,6 +306,8 @@ int main(void) {
     vramSetBankC(VRAM_C_SUB_BG);
     int bg = bgInit(2, BgType_Bmp16, BgSize_B16_256x256, 0, 0);
     framebuffer = (u16 *)bgGetGfxPtr(bg);
+    bgShow(bg);
+    bgUpdate();
     consoleInit(&bottomConsole, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, false, true);
     consoleSelect(&bottomConsole);
     sdAvailable = fatInitDefault();
