@@ -263,6 +263,7 @@ static void editTarget(bool place) {
         int x = (int)floorf(playerX + dx * d);
         int z = (int)floorf(playerZ + dz * d);
         if (x < 0 || x >= WORLD_SIZE || z < 0 || z >= WORLD_SIZE) break;
+        if (x == (int)floorf(playerX) && z == (int)floorf(playerZ)) continue;
         int h = topHeight(x, z);
         if (h > 0 && fabsf((float)h - (playerY + 1.0f)) < 2.5f) {
             if (place) {
