@@ -103,7 +103,6 @@ static void renderWorld(void)
     consoleClear();
 
     iprintf("          DSI CRAFT\n");
-    iprintf("     MONDO - VISTA DALL'ALTO\n");
     iprintf("   +----------------+\n");
 
     for (z = 0; z < WORLD_SIZE; z++) {
@@ -122,10 +121,9 @@ static void renderWorld(void)
 
     iprintf("   +----------------+\n");
     iprintf("@ = TU  G=ERBA T=TERRA\n");
-    iprintf("P=PIETRA L=LEGNO S=SABBIA\n");
     iprintf("POSIZIONE: X %d  Z %d\n", playerX, playerZ);
     iprintf("BLOCCO: %s\n", blockNames[selectedBlock]);
-    iprintf("FRECCЕ = MUOVI  L=ROMPI  R=PIAZZA");
+    iprintf("FRECCE = MUOVI  L=ROMPI  R=PIAZZA");
 }
 
 static void renderInventory(void)
