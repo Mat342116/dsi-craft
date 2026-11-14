@@ -1,4 +1,5 @@
 #include <nds.h>
+#include <fat.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -6,6 +7,10 @@
 #define WORLD_SIZE 16
 #define WORLD_HEIGHT 8
 #define MAX_WORLDS 4
+#define SAVE_PATH "sd:/dsi-craft.sav"
+#define SAVE_TEMP_PATH "sd:/dsi-craft.tmp"
+#define SAVE_MAGIC 0x44534943
+#define SAVE_VERSION 1
 
 #define AIR 0
 #define GRASS 1
@@ -19,6 +24,12 @@ typedef struct {
     bool used;
 } World;
 
+typedef struct {
+    unsigned int magic;
+    unsigned int version;
+    World worlds[MAX_WORLDS];
+} SaveData;
+
 static World worlds[MAX_WORLDS];
 static int selectedWorld = 0;
 static int activeWorld = -1;
@@ -26,6 +37,8 @@ static int selectedBlock = GRASS;
 static int cursorX = 8;
 static int cursorZ = 8;
 static int cursorY = 3;
+static bool sdAvailable = false;
+static bool saveOk = false;
 
 static char blockSymbol(unsigned char block) {
     switch (block) {
@@ -52,6 +65,74 @@ static void generateWorld(World *world) {
     world->used = true;
 }
 
+static bool saveWorlds(void) {
+    if (!sdAvailable) {
+        saveOk = false;
+        return false;
+    }
+
+    SaveData data;
+    data.magic = SAVE_MAGIC;
+    data.version = SAVE_VERSION;
+    memcpy(data.worlds, worlds, sizeof(worlds));
+
+    FILE *file = fopen(SAVE_TEMP_PATH, "wb");
+    if (file == NULL) {
+        saveOk = false;
+        return false;
+    }
+
+    bool written = fwrite(&data, 1, sizeof(data), file) == sizeof(data);
+    bool closed = fclose(file) == 0;
+    if (!written || !closed || rename(SAVE_TEMP_PATH, SAVE_PATH) != 0) {
+        remove(SAVE_TEMP_PATH);
+        saveOk = false;
+        return false;
+    }
+
+    saveOk = true;
+    return true;
+}
+
+static void loadWorlds(void) {
+    if (!sdAvailable) return;
+
+    FILE *file = fopen(SAVE_PATH, "rb");
+    if (file == NULL) {
+        saveOk = true; /* Primo avvio: non esiste ancora un file di salvataggio. */
+        return;
+    }
+
+    SaveData data;
+    size_t bytesRead = fread(&data, 1, sizeof(data), file);
+    int extra = fgetc(file);
+    fclose(file);
+
+    if (bytesRead != sizeof(data) || extra != EOF ||
+        data.magic != SAVE_MAGIC || data.version != SAVE_VERSION) {
+        saveOk = false;
+        return;
+    }
+
+    for (int i = 0; i < MAX_WORLDS; i++) {
+        if (data.worlds[i].used) {
+            for (int x = 0; x < WORLD_SIZE; x++) {
+                for (int y = 0; y < WORLD_HEIGHT; y++) {
+                    for (int z = 0; z < WORLD_SIZE; z++) {
+                        if (data.worlds[i].blocks[x][y][z] > SAND) {
+                            saveOk = false;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    memcpy(worlds, data.worlds, sizeof(worlds));
+    saveOk = true;
+}
+
 static void showWorldMenu(void) {
     consoleClear();
     iprintf("          DSi CRAFT\n");
@@ -63,14 +144,17 @@ static void showWorldMenu(void) {
         iprintf("%c Mondo %d: %s\n",
                 selectedWorld == i ? '>' : ' ',
                 i + 1,
-                worlds[i].used ? "CREATO" : "VUOTO");
+                worlds[i].used ? "SALVATO" : "VUOTO");
     }
 
     iprintf("\nFRECCE: seleziona mondo\n");
     iprintf("A: entra nel mondo selezionato\n");
     iprintf("X: crea un nuovo mondo\n");
-    iprintf("Massimo 4 mondi in memoria\n");
-    iprintf("Nessun mob, meteo o sopravvivenza\n");
+    iprintf("Salvataggio SD: %s\n",
+            !sdAvailable ? "SD NON DISPONIBILE" :
+            (saveOk ? "OK" : "ERRORE"));
+    iprintf("Sempre giorno - nessun ciclo notte\n");
+    iprintf("Niente mob, meteo o sopravvivenza\n");
 }
 
 static void keepCursorInWorld(void) {
@@ -128,6 +212,9 @@ static void showWorld(void) {
     iprintf(" FRECCE: muovi cursore X/Y: livello\n");
     iprintf(" L: rompi  R: piazza  B: menu mondi\n");
     iprintf(" + indica il cursore, non un personaggio\n");
+    iprintf(" Salvataggio: %s\n",
+            !sdAvailable ? "SD non disponibile" :
+            (saveOk ? "OK" : "ERRORE"));
 }
 
 int main(void) {
@@ -136,6 +223,11 @@ int main(void) {
     vramSetBankA(VRAM_A_MAIN_BG);
     vramSetBankC(VRAM_C_SUB_BG);
     consoleDemoInit();
+
+    sdAvailable = fatInitDefault();
+    if (sdAvailable) {
+        loadWorlds();
+    }
 
     showWorldMenu();
 
@@ -174,6 +266,7 @@ int main(void) {
                     generateWorld(&worlds[freeSlot]);
                     selectedWorld = freeSlot;
                     activeWorld = freeSlot;
+                    saveWorlds();
                     cursorX = 8;
                     cursorZ = 8;
                     cursorY = 3;
@@ -202,8 +295,8 @@ int main(void) {
                 if (keys & KEY_RIGHT) { cursorX++; changed = true; }
                 if (keys & KEY_X)     { cursorY--; changed = true; }
                 if (keys & KEY_Y)     { cursorY++; changed = true; }
-                if (keys & KEY_L)     { breakBlock(); changed = true; }
-                if (keys & KEY_R)     { placeBlock(); changed = true; }
+                if (keys & KEY_L)     { breakBlock(); saveWorlds(); changed = true; }
+                if (keys & KEY_R)     { placeBlock(); saveWorlds(); changed = true; }
 
                 if (keys & KEY_TOUCH) {
                     touchPosition touch;
