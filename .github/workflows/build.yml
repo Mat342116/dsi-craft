@@ -1,9 +1,10 @@
-
 name: Build DSi Craft
 
 on:
   workflow_dispatch:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
 
 jobs:
@@ -22,8 +23,12 @@ jobs:
             devkitpro/devkitarm:latest \
             make
 
+      - name: Verify Nintendo DS ROM
+        run: test -s DSiCraft.nds
+
       - name: Upload Nintendo DS ROM
         uses: actions/upload-artifact@v4
         with:
           name: DSi-Craft-ROM
-          path: '*.nds'
+          path: DSiCraft.nds
+          if-no-files-found: error
