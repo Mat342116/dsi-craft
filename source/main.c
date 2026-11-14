@@ -233,8 +233,8 @@ static void showWorld(void) {
 
     iprintf("\n==============================\n");
     iprintf(" BLOCCO: %d (1=G 2=D 3=S 4=W 5=A)\n", selectedBlock);
-    iprintf(" TOUCH: scegli blocco nella barra\\n");
-    iprintf(" SELECT: blocco successivo\\n");
+    iprintf(" TOUCH: scegli blocco nella barra\n");
+    iprintf(" SELECT: blocco successivo\n");
     iprintf(" FRECCE: muovi cursore X/Y: livello\n");
     iprintf(" L: rompi  R: piazza  B: menu mondi\n");
     iprintf(" + indica il cursore, non un personaggio\n");
@@ -321,7 +321,6 @@ int main(void) {
                 if (keys & KEY_RIGHT) { cursorX++; changed = true; }
                 if (keys & KEY_Y)     { cursorY++; changed = true; }
                 if (keys & KEY_SELECT) { selectedBlock = selectedBlock % SAND + 1; changed = true; }
-                if (keys & KEY_Y)     { cursorY++; changed = true; }\n                if (keys & KEY_SELECT) { selectedBlock = selectedBlock % SAND + 1; changed = true; }
                 if (keys & KEY_L)     { breakBlock(); saveWorlds(); changed = true; }
                 if (keys & KEY_R)     { placeBlock(); saveWorlds(); changed = true; }
 
