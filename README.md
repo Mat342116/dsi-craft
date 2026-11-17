@@ -12,9 +12,9 @@ La vecchia schermata sandbox 2D testuale è stata sostituita da un prototipo 3D 
 - movimento relativo alla direzione della visuale;
 - collisioni orizzontali con i blocchi più alti;
 - rottura e piazzamento dei blocchi;
-- selezione del blocco tramite touch screen.
+- selezione del blocco tramite touch screen o pulsante SELECT.
 
-Il renderer è una prima implementazione software leggera, pensata per l'hardware Nintendo DS. Non è ancora un motore 3D completo con texture dettagliate o illuminazione avanzata.
+Il renderer è una prima implementazione software leggera, pensata per l'hardware Nintendo DS. Non è ancora un motore 3D completo con texture dettagliate o illuminazione avanzata. La modalità è esclusivamente creativa: sempre giorno, senza ciclo giorno/notte, mob, meteo, pioggia o sopravvivenza.
 
 ## Avvio
 
@@ -33,13 +33,13 @@ All'accensione il gioco entra automaticamente nel primo mondo salvato. Se non es
 - Freccia SINISTRA / DESTRA: spostamento laterale.
 - Y / A: ruota la visuale a sinistra / destra (secondo pad simulato).
 - X / B: guarda in alto / in basso.
-- L: rompe il blocco davanti al giocatore.
-- R: piazza il blocco selezionato davanti al giocatore.
+- L: rompe il blocco davanti alla visuale.
+- R: piazza il blocco selezionato davanti alla visuale.
 - Touch: seleziona uno dei cinque materiali.
 - START: torna al menu principale.
-- SELECT: apre la selezione dei mondi.
+- SELECT: passa al materiale successivo.
 
-I quattro pulsanti frontali simulano il secondo analogico: non muovono il personaggio.
+I pulsanti frontali gestiscono la visuale; non viene disegnato un modello del personaggio.
 
 ## Salvataggi
 
