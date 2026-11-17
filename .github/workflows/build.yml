@@ -15,13 +15,13 @@ jobs:
       - name: Download source
         uses: actions/checkout@v4
 
-      - name: Install Nintendo DS development libraries and compile
+      - name: Compile Nintendo DS ROM
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
-            devkitpro/devkitarm:latest \
-            bash -lc "dkp-pacman -Syu --noconfirm nds-dev && make"
+            devkitpro/devkitarm:20260610 \
+            bash -lc "make"
 
       - name: Verify ROM
         run: |
