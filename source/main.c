@@ -167,7 +167,7 @@ static void showMenu(void) {
                 i + 1, worlds[i].used ? "SALVATO" : "VUOTO");
     iprintf("\nFRECCE: scegli mondo\n");
     iprintf("A: entra nel mondo\nX: crea mondo\n");
-    iprintf("START: menu / SELECT: mondi\n");
+    iprintf("Scegli con le frecce, A entra, X crea\n");
     iprintf("SD: %s\n", !sdAvailable ? "NON DISPONIBILE" : (saveOk ? "OK" : "ERRORE"));
     fillRect(0, 0, 256, 192, rgb15(4, 9, 19));
     fillRect(0, 118, 256, 192, rgb15(5, 15, 7));
@@ -288,7 +288,8 @@ static void showGameHelp(void) {
     iprintf("Frecce: cammina / strafing\n");
     iprintf("Y/A: ruota visuale | X/B: guarda su/giu\n");
     iprintf("L: rompi | R: piazza\n");
-    iprintf("START: menu | SELECT: scegli mondo\n");
+    iprintf("START: menu | SELECT: blocco successivo\n");
+    iprintf("Creativa: niente mob, meteo o sopravvivenza\n");
     iprintf("Salvataggio SD: %s\n", saveOk ? "OK" : "non disponibile/errore");
 }
 
@@ -351,7 +352,11 @@ int main(void) {
             if (activeWorld < 0) showMenu();
         } else {
             if (down & KEY_START) { showMenu(); }
-            else if (down & KEY_SELECT) { showMenu(); }
+            else if (down & KEY_SELECT) {
+                selectedBlock = selectedBlock % SAND + 1;
+                renderWorld();
+                showGameHelp();
+            }
             else {
                 const float move = 0.10f;
                 float forward = 0.0f, strafe = 0.0f;
