@@ -72,13 +72,17 @@ static u16 blockColor(unsigned char block, int shade) {
         default: break;
     }
     r = r * shade / 16; g = g * shade / 16; b = b * shade / 16;
-    if (r > 31) r = 31; if (g > 31) g = 31; if (b > 31) b = 31;
+    if (r > 31) r = 31;
+    if (g > 31) g = 31;
+    if (b > 31) b = 31;
     return rgb15(r, g, b);
 }
 
 static void fillRect(int x0, int y0, int x1, int y1, u16 color) {
-    if (x0 < 0) x0 = 0; if (x1 > SCREEN_W) x1 = SCREEN_W;
-    if (y0 < 0) y0 = 0; if (y1 > SCREEN_H) y1 = SCREEN_H;
+    if (x0 < 0) x0 = 0;
+    if (x1 > SCREEN_W) x1 = SCREEN_W;
+    if (y0 < 0) y0 = 0;
+    if (y1 > SCREEN_H) y1 = SCREEN_H;
     for (int y = y0; y < y1; ++y)
         for (int x = x0; x < x1; ++x)
             framebuffer[y * 256 + x] = color;
@@ -219,7 +223,8 @@ static void renderWorld(void) {
         float scale = 72.0f / distance;
         int top = (int)(horizon - (h - playerY + 0.15f) * scale);
         int bottom = (int)(horizon + (playerY - 0.0f) * scale);
-        if (top < 0) top = 0; if (bottom > SCREEN_H) bottom = SCREEN_H;
+        if (top < 0) top = 0;
+        if (bottom > SCREEN_H) bottom = SCREEN_H;
         int shade = side ? 11 : 16;
         if (((hitX + hitZ) & 1) != 0) shade -= 2;
         u16 wall = blockColor(block, shade);
