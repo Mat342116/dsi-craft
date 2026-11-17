@@ -3,7 +3,7 @@ name: Build DSi Craft
 on:
   workflow_dispatch:
   push:
-    branches: [ main, feature/creative-mode-core ]
+    branches: [ main, feature/creative-mode-core, feature/creative-controls-ci ]
   pull_request:
     branches: [ main ]
 
@@ -15,13 +15,13 @@ jobs:
       - name: Download source
         uses: actions/checkout@v4
 
-      - name: Compile Nintendo DS ROM
+      - name: Install Nintendo DS development libraries and compile
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
             devkitpro/devkitarm:latest \
-            bash -lc "make"
+            bash -lc "dkp-pacman -Syu --noconfirm nds-dev && make"
 
       - name: Verify ROM
         run: |
