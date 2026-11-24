@@ -72,13 +72,17 @@ static u16 blockColor(unsigned char block, int shade) {
         default: break;
     }
     r = r * shade / 16; g = g * shade / 16; b = b * shade / 16;
-    if (r > 31) r = 31; if (g > 31) g = 31; if (b > 31) b = 31;
+    if (r > 31) r = 31;
+    if (g > 31) g = 31;
+    if (b > 31) b = 31;
     return rgb15(r, g, b);
 }
 
 static void fillRect(int x0, int y0, int x1, int y1, u16 color) {
-    if (x0 < 0) x0 = 0; if (x1 > SCREEN_W) x1 = SCREEN_W;
-    if (y0 < 0) y0 = 0; if (y1 > SCREEN_H) y1 = SCREEN_H;
+    if (x0 < 0) x0 = 0;
+    if (x1 > SCREEN_W) x1 = SCREEN_W;
+    if (y0 < 0) y0 = 0;
+    if (y1 > SCREEN_H) y1 = SCREEN_H;
     for (int y = y0; y < y1; ++y)
         for (int x = x0; x < x1; ++x)
             framebuffer[y * 256 + x] = color;
@@ -167,7 +171,7 @@ static void showMenu(void) {
                 i + 1, worlds[i].used ? "SALVATO" : "VUOTO");
     iprintf("\nFRECCE: scegli mondo\n");
     iprintf("A: entra nel mondo\nX: crea mondo\n");
-    iprintf("START: menu / SELECT: mondi\n");
+    iprintf("Scegli con le frecce, A entra, X crea\n");
     iprintf("SD: %s\n", !sdAvailable ? "NON DISPONIBILE" : (saveOk ? "OK" : "ERRORE"));
     fillRect(0, 0, 256, 192, rgb15(4, 9, 19));
     fillRect(0, 118, 256, 192, rgb15(5, 15, 7));
@@ -219,7 +223,8 @@ static void renderWorld(void) {
         float scale = 72.0f / distance;
         int top = (int)(horizon - (h - playerY + 0.15f) * scale);
         int bottom = (int)(horizon + (playerY - 0.0f) * scale);
-        if (top < 0) top = 0; if (bottom > SCREEN_H) bottom = SCREEN_H;
+        if (top < 0) top = 0;
+        if (bottom > SCREEN_H) bottom = SCREEN_H;
         int shade = side ? 11 : 16;
         if (((hitX + hitZ) & 1) != 0) shade -= 2;
         u16 wall = blockColor(block, shade);
@@ -288,7 +293,8 @@ static void showGameHelp(void) {
     iprintf("Frecce: cammina / strafing\n");
     iprintf("Y/A: ruota visuale | X/B: guarda su/giu\n");
     iprintf("L: rompi | R: piazza\n");
-    iprintf("START: menu | SELECT: scegli mondo\n");
+    iprintf("START: menu | SELECT: blocco successivo\n");
+    iprintf("Creativa: niente mob, meteo o sopravvivenza\n");
     iprintf("Salvataggio SD: %s\n", saveOk ? "OK" : "non disponibile/errore");
 }
 
@@ -351,7 +357,11 @@ int main(void) {
             if (activeWorld < 0) showMenu();
         } else {
             if (down & KEY_START) { showMenu(); }
-            else if (down & KEY_SELECT) { showMenu(); }
+            else if (down & KEY_SELECT) {
+                selectedBlock = selectedBlock % SAND + 1;
+                renderWorld();
+                showGameHelp();
+            }
             else {
                 const float move = 0.10f;
                 float forward = 0.0f, strafe = 0.0f;

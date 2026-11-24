@@ -3,7 +3,7 @@ name: Build DSi Craft
 on:
   workflow_dispatch:
   push:
-    branches: [ main, feature/creative-mode-core ]
+    branches: [ main, feature/creative-mode-core, feature/creative-controls-ci ]
   pull_request:
     branches: [ main ]
 
@@ -20,7 +20,7 @@ jobs:
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
-            devkitpro/devkitarm:latest \
+            devkitpro/devkitarm:20260610 \
             bash -lc "make"
 
       - name: Verify ROM
